@@ -1,11 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabase';
 
-const empresas = [
-  { codigo: '001', nombre: 'MARCO ANTONIO MORALES VARGAS', cedula: '105110120' },
-  { codigo: '002', nombre: 'FARMACOSTA 27 ABRIL', cedula: '105110120' },
-  { codigo: '003', nombre: 'AGROPECUARIA VASQUEZ Y ZUÑIGA, S.A.', cedula: '3101105236' },
-  { codigo: '004', nombre: 'MADFIEL, S.A.', cedula: '3101165320' },
-];
+interface Empresa {
+  id: number;
+  codigo: string;
+  cedula: string;
+  nombre: string;
+  activo: boolean;
+}
+
+interface Usuario {
+  id: number;
+  username: string;
+  password: string;
+  nombre: string;
+}
 
 const modulos = [
   { nombre: 'Contabilidad', icono: '📒', id: 'contabilidad' },
@@ -46,256 +55,121 @@ const styles = `
     --sidebar-w:   72px;
     --navbar-h:    56px;
   }
-
-  /* LOGIN */
-  .login-wrap {
-    min-height: 100vh; display: flex;
-    background: var(--bg-dark); position: relative; overflow: hidden;
-  }
-  .login-deco {
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(ellipse 60% 60% at 70% 50%, rgba(34,197,94,0.10) 0%, transparent 70%),
-      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px);
-  }
-  .login-panel {
-    position: relative; z-index: 1; margin: auto; width: 420px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(34,197,94,0.18);
-    border-radius: 20px; padding: 48px 40px; backdrop-filter: blur(12px);
-  }
-  .login-logo {
-    width: 56px; height: 56px; border-radius: 14px;
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: white;
-    margin-bottom: 20px; box-shadow: 0 0 32px rgba(34,197,94,0.3);
-  }
-  .login-title { font-size: 26px; font-weight: 600; color: white; letter-spacing: -0.5px; }
-  .login-sub { font-size: 13px; color: var(--gray-400); margin-top: 4px; margin-bottom: 32px; }
-  .field-label {
-    display: block; font-size: 12px; font-weight: 500; color: var(--gray-400);
-    letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px;
-  }
-  .field-input {
-    width: 100%; padding: 11px 14px;
-    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 10px; color: white; font-size: 14px;
-    font-family: 'DM Sans', sans-serif; outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s; margin-bottom: 18px;
-  }
-  .field-input:focus { border-color: var(--green-main); box-shadow: 0 0 0 3px rgba(34,197,94,0.15); }
-  .field-input option { background: #1a2e1a; color: white; }
-  .field-hint { font-size: 11px; color: var(--gray-400); font-family: 'DM Mono', monospace; margin-top: -14px; margin-bottom: 18px; }
-  .btn-login {
-    width: 100%; padding: 13px;
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-    border: none; border-radius: 10px; color: white; font-size: 14px; font-weight: 600;
-    font-family: 'DM Sans', sans-serif; cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s; letter-spacing: 0.02em; margin-top: 6px;
-  }
-  .btn-login:hover { opacity: 0.92; }
-  .btn-login:active { transform: scale(0.98); }
-  .login-error { font-size: 12px; color: #f87171; text-align: center; margin-bottom: 12px; }
-  .login-footer { font-size: 11px; color: rgba(255,255,255,0.2); text-align: center; margin-top: 28px; font-family: 'DM Mono', monospace; }
-
-  /* SHELL */
-  .app-shell {
-    min-height: 100vh; display: grid;
-    grid-template-rows: var(--navbar-h) 1fr;
-    grid-template-columns: var(--sidebar-w) 1fr;
-    grid-template-areas: "sidebar navbar" "sidebar main";
-    background: var(--gray-100);
-  }
-
-  /* NAVBAR */
-  .navbar {
-    grid-area: navbar; background: var(--bg-dark);
-    display: flex; align-items: center; padding: 0 24px; gap: 16px;
-    border-bottom: 1px solid rgba(34,197,94,0.12);
-  }
-  .navbar-company { flex: 1; }
-  .navbar-company-name { font-size: 14px; font-weight: 600; color: white; letter-spacing: -0.2px; }
-  .navbar-company-sub { font-size: 11px; color: var(--green-main); font-family: 'DM Mono', monospace; }
-  .navbar-right { display: flex; align-items: center; gap: 20px; }
-  .navbar-badge { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--gray-400); }
-  .navbar-badge span { color: var(--green-main); font-weight: 500; }
-  .navbar-clock {
-    font-size: 13px; font-family: 'DM Mono', monospace; color: white; font-weight: 500;
-    background: rgba(34,197,94,0.10); padding: 4px 10px; border-radius: 6px;
-    border: 1px solid rgba(34,197,94,0.2);
-  }
-  .navbar-user { display: flex; align-items: center; gap: 8px; }
-  .navbar-avatar {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 600; color: white;
-  }
-  .navbar-username { font-size: 13px; font-weight: 500; color: white; }
-
-  /* SIDEBAR */
-  .sidebar {
-    grid-area: sidebar; background: var(--bg-dark2);
-    display: flex; flex-direction: column; align-items: center;
-    padding: 0 0 16px; border-right: 1px solid rgba(34,197,94,0.10); overflow-y: auto;
-  }
-  .sidebar-logo {
-    width: 100%; height: var(--navbar-h);
-    display: flex; align-items: center; justify-content: center;
-    background: var(--bg-dark); border-bottom: 1px solid rgba(34,197,94,0.12);
-    border-right: 1px solid rgba(34,197,94,0.10); margin-bottom: 8px;
-  }
-  .sidebar-logo-inner {
-    width: 36px; height: 36px; border-radius: 9px;
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'DM Mono', monospace; font-size: 16px; font-weight: 500; color: white;
-    box-shadow: 0 0 16px rgba(34,197,94,0.25);
-  }
-  .sidebar-item {
-    width: 56px; height: 56px; border-radius: 12px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-    cursor: pointer; margin-bottom: 2px; transition: background 0.15s; border: 1px solid transparent;
-  }
-  .sidebar-item:hover { background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.2); }
-  .sidebar-item.active { background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.35); }
-  .sidebar-icon { font-size: 16px; color: var(--gray-400); line-height: 1; transition: color 0.15s; }
-  .sidebar-item:hover .sidebar-icon, .sidebar-item.active .sidebar-icon { color: var(--green-main); }
-  .sidebar-label { font-size: 8.5px; color: var(--gray-400); font-weight: 500; text-align: center; line-height: 1.2; transition: color 0.15s; }
-  .sidebar-item:hover .sidebar-label, .sidebar-item.active .sidebar-label { color: var(--green-muted); }
-  .sidebar-divider { width: 32px; height: 1px; background: rgba(34,197,94,0.10); margin: 6px 0; }
-  .sidebar-exit {
-    margin-top: auto; width: 56px; height: 44px; border-radius: 10px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    cursor: pointer; border: 1px solid transparent; transition: background 0.15s, border-color 0.15s;
-  }
-  .sidebar-exit:hover { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.25); }
-  .sidebar-exit-icon { font-size: 14px; color: #f87171; }
-  .sidebar-exit-label { font-size: 8.5px; color: #f87171; font-weight: 500; }
-
-  /* MAIN */
-  .main-content { grid-area: main; padding: 28px 32px; overflow-y: auto; }
-
-  /* FAVORITOS */
-  .section-title {
-    font-size: 11px; font-weight: 600; color: var(--gray-400);
-    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;
-  }
-  .favoritos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px; margin-bottom: 32px;
-  }
-  .fav-card {
-    background: white; border: 1px solid var(--gray-200);
-    border-radius: 16px; padding: 24px 16px;
-    display: flex; flex-direction: column; align-items: center; gap: 12px;
-    cursor: pointer; transition: all 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    position: relative;
-  }
-  .fav-card:hover {
-    border-color: var(--green-main);
-    box-shadow: 0 6px 20px rgba(34,197,94,0.14);
-    transform: translateY(-3px);
-  }
-  .fav-card.active {
-    border-color: var(--green-main);
-    background: var(--green-soft);
-  }
-  .fav-icon {
-    width: 52px; height: 52px; border-radius: 14px;
-    background: var(--green-soft);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; transition: all 0.2s;
-  }
-  .fav-card:hover .fav-icon, .fav-card.active .fav-icon {
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-  }
-  .fav-name { font-size: 13px; font-weight: 600; color: var(--gray-700, #374151); text-align: center; }
-  .fav-card:hover .fav-name { color: var(--gray-800); }
-  .fav-arrow {
-    font-size: 11px; color: var(--green-dim); font-weight: 600;
-    opacity: 0; transition: opacity 0.2s;
-  }
-  .fav-card:hover .fav-arrow { opacity: 1; }
-
-  /* TODOS LOS MÓDULOS */
-  .all-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 12px;
-  }
-  .mod-card {
-    background: white; border: 1px solid var(--gray-200);
-    border-radius: 12px; padding: 16px 12px;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    cursor: pointer; transition: all 0.18s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-  }
-  .mod-card:hover {
-    border-color: var(--green-main);
-    box-shadow: 0 4px 12px rgba(34,197,94,0.10);
-    transform: translateY(-2px);
-  }
-  .mod-icon {
-    width: 38px; height: 38px; border-radius: 10px;
-    background: var(--green-soft);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; transition: background 0.18s;
-  }
-  .mod-card:hover .mod-icon {
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-  }
-  .mod-name { font-size: 11px; font-weight: 500; color: var(--gray-600); text-align: center; line-height: 1.3; }
-  .mod-card:hover .mod-name { color: var(--gray-800); }
-
-  /* WELCOME BAR */
-  .welcome-bar {
-    background: var(--bg-dark); border-radius: 14px;
-    padding: 18px 24px; display: flex; align-items: center; gap: 16px;
-    margin-bottom: 24px;
-    border: 1px solid rgba(34,197,94,0.15);
-  }
-  .welcome-bar-avatar {
-    width: 42px; height: 42px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--green-dim), var(--green-main));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 600; color: white; flex-shrink: 0;
-  }
-  .welcome-bar-text h2 { font-size: 16px; font-weight: 600; color: white; }
-  .welcome-bar-text p { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-  .welcome-bar-right { margin-left: auto; text-align: right; }
-  .welcome-bar-cia {
-    font-size: 11px; font-family: 'DM Mono', monospace;
-    color: var(--green-main); background: rgba(34,197,94,0.12);
-    padding: 3px 10px; border-radius: 6px; display: inline-block;
-    border: 1px solid rgba(34,197,94,0.2);
-  }
-  .welcome-bar-date { font-size: 11px; color: var(--gray-400); margin-top: 5px; font-family: 'DM Mono', monospace; }
+  .login-wrap { min-height:100vh; display:flex; background:var(--bg-dark); position:relative; overflow:hidden; }
+  .login-deco { position:absolute; inset:0; background: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(34,197,94,0.10) 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px); }
+  .login-panel { position:relative; z-index:1; margin:auto; width:420px; background:rgba(255,255,255,0.03); border:1px solid rgba(34,197,94,0.18); border-radius:20px; padding:48px 40px; backdrop-filter:blur(12px); }
+  .login-logo { width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:22px; font-weight:500; color:white; margin-bottom:20px; box-shadow:0 0 32px rgba(34,197,94,0.3); }
+  .login-title { font-size:26px; font-weight:600; color:white; letter-spacing:-0.5px; }
+  .login-sub { font-size:13px; color:var(--gray-400); margin-top:4px; margin-bottom:32px; }
+  .field-label { display:block; font-size:12px; font-weight:500; color:var(--gray-400); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px; }
+  .field-input { width:100%; padding:11px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:10px; color:white; font-size:14px; font-family:'DM Sans',sans-serif; outline:none; transition:border-color 0.2s,box-shadow 0.2s; margin-bottom:18px; }
+  .field-input:focus { border-color:var(--green-main); box-shadow:0 0 0 3px rgba(34,197,94,0.15); }
+  .field-input option { background:#1a2e1a; color:white; }
+  .field-hint { font-size:11px; color:var(--gray-400); font-family:'DM Mono',monospace; margin-top:-14px; margin-bottom:18px; }
+  .btn-login { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); border:none; border-radius:10px; color:white; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:opacity 0.2s,transform 0.1s; margin-top:6px; }
+  .btn-login:hover { opacity:0.92; }
+  .btn-login:active { transform:scale(0.98); }
+  .btn-login:disabled { opacity:0.6; cursor:not-allowed; }
+  .login-error { font-size:12px; color:#f87171; text-align:center; margin-bottom:12px; }
+  .login-footer { font-size:11px; color:rgba(255,255,255,0.2); text-align:center; margin-top:28px; font-family:'DM Mono',monospace; }
+  .app-shell { min-height:100vh; display:grid; grid-template-rows:var(--navbar-h) 1fr; grid-template-columns:var(--sidebar-w) 1fr; grid-template-areas:"sidebar navbar" "sidebar main"; background:var(--gray-100); }
+  .navbar { grid-area:navbar; background:var(--bg-dark); display:flex; align-items:center; padding:0 24px; gap:16px; border-bottom:1px solid rgba(34,197,94,0.12); }
+  .navbar-company { flex:1; }
+  .navbar-company-name { font-size:14px; font-weight:600; color:white; }
+  .navbar-company-sub { font-size:11px; color:var(--green-main); font-family:'DM Mono',monospace; }
+  .navbar-right { display:flex; align-items:center; gap:20px; }
+  .navbar-badge { font-size:11px; font-family:'DM Mono',monospace; color:var(--gray-400); }
+  .navbar-badge span { color:var(--green-main); font-weight:500; }
+  .navbar-clock { font-size:13px; font-family:'DM Mono',monospace; color:white; font-weight:500; background:rgba(34,197,94,0.10); padding:4px 10px; border-radius:6px; border:1px solid rgba(34,197,94,0.2); }
+  .navbar-user { display:flex; align-items:center; gap:8px; }
+  .navbar-avatar { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white; }
+  .navbar-username { font-size:13px; font-weight:500; color:white; }
+  .sidebar { grid-area:sidebar; background:var(--bg-dark2); display:flex; flex-direction:column; align-items:center; padding:0 0 16px; border-right:1px solid rgba(34,197,94,0.10); overflow-y:auto; }
+  .sidebar-logo { width:100%; height:var(--navbar-h); display:flex; align-items:center; justify-content:center; background:var(--bg-dark); border-bottom:1px solid rgba(34,197,94,0.12); margin-bottom:8px; }
+  .sidebar-logo-inner { width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:16px; font-weight:500; color:white; box-shadow:0 0 16px rgba(34,197,94,0.25); }
+  .sidebar-item { width:56px; height:56px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; margin-bottom:2px; transition:background 0.15s; border:1px solid transparent; }
+  .sidebar-item:hover { background:rgba(34,197,94,0.10); border-color:rgba(34,197,94,0.2); }
+  .sidebar-item.active { background:rgba(34,197,94,0.15); border-color:rgba(34,197,94,0.35); }
+  .sidebar-icon { font-size:16px; color:var(--gray-400); line-height:1; transition:color 0.15s; }
+  .sidebar-item:hover .sidebar-icon,.sidebar-item.active .sidebar-icon { color:var(--green-main); }
+  .sidebar-label { font-size:8.5px; color:var(--gray-400); font-weight:500; text-align:center; line-height:1.2; transition:color 0.15s; }
+  .sidebar-item:hover .sidebar-label,.sidebar-item.active .sidebar-label { color:var(--green-muted); }
+  .sidebar-divider { width:32px; height:1px; background:rgba(34,197,94,0.10); margin:6px 0; }
+  .sidebar-exit { margin-top:auto; width:56px; height:44px; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; border:1px solid transparent; transition:background 0.15s; }
+  .sidebar-exit:hover { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.25); }
+  .sidebar-exit-icon { font-size:14px; color:#f87171; }
+  .sidebar-exit-label { font-size:8.5px; color:#f87171; font-weight:500; }
+  .main-content { grid-area:main; padding:28px 32px; overflow-y:auto; }
+  .section-title { font-size:11px; font-weight:600; color:var(--gray-400); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px; }
+  .favoritos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-bottom:32px; }
+  .fav-card { background:white; border:1px solid var(--gray-200); border-radius:16px; padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:12px; cursor:pointer; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .fav-card:hover { border-color:var(--green-main); box-shadow:0 6px 20px rgba(34,197,94,0.14); transform:translateY(-3px); }
+  .fav-card.active { border-color:var(--green-main); background:var(--green-soft); }
+  .fav-icon { width:52px; height:52px; border-radius:14px; background:var(--green-soft); display:flex; align-items:center; justify-content:center; font-size:24px; transition:all 0.2s; }
+  .fav-card:hover .fav-icon,.fav-card.active .fav-icon { background:linear-gradient(135deg,var(--green-dim),var(--green-main)); }
+  .fav-name { font-size:13px; font-weight:600; color:#374151; text-align:center; }
+  .fav-arrow { font-size:11px; color:var(--green-dim); font-weight:600; opacity:0; transition:opacity 0.2s; }
+  .fav-card:hover .fav-arrow { opacity:1; }
+  .all-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; }
+  .mod-card { background:white; border:1px solid var(--gray-200); border-radius:12px; padding:16px 12px; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; transition:all 0.18s; }
+  .mod-card:hover { border-color:var(--green-main); box-shadow:0 4px 12px rgba(34,197,94,0.10); transform:translateY(-2px); }
+  .mod-icon { width:38px; height:38px; border-radius:10px; background:var(--green-soft); display:flex; align-items:center; justify-content:center; font-size:18px; transition:background 0.18s; }
+  .mod-card:hover .mod-icon { background:linear-gradient(135deg,var(--green-dim),var(--green-main)); }
+  .mod-name { font-size:11px; font-weight:500; color:var(--gray-600); text-align:center; line-height:1.3; }
+  .welcome-bar { background:var(--bg-dark); border-radius:14px; padding:18px 24px; display:flex; align-items:center; gap:16px; margin-bottom:24px; border:1px solid rgba(34,197,94,0.15); }
+  .welcome-bar-avatar { width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:600; color:white; flex-shrink:0; }
+  .welcome-bar-text h2 { font-size:16px; font-weight:600; color:white; }
+  .welcome-bar-text p { font-size:12px; color:var(--gray-400); margin-top:2px; }
+  .welcome-bar-right { margin-left:auto; text-align:right; }
+  .welcome-bar-cia { font-size:11px; font-family:'DM Mono',monospace; color:var(--green-main); background:rgba(34,197,94,0.12); padding:3px 10px; border-radius:6px; display:inline-block; border:1px solid rgba(34,197,94,0.2); }
+  .welcome-bar-date { font-size:11px; color:var(--gray-400); margin-top:5px; font-family:'DM Mono',monospace; }
+  .loading { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg-dark); color:var(--green-main); font-family:'DM Mono',monospace; font-size:14px; }
 `;
 
 function Clock() {
-  const [time, setTime] = React.useState(new Date());
-  React.useEffect(() => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
   return <span>{time.toLocaleTimeString('es-CR')}</span>;
 }
 
-function Login({ onLogin }: { onLogin: (u: string, e: typeof empresas[0]) => void }) {
-  const [usuario, setUsuario] = useState('');
+function Login({ onLogin }: { onLogin: (usuario: Usuario, empresa: Empresa) => void }) {
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [empresa, setEmpresa] = useState(empresas[0]);
   const [error, setError] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    supabase.from('empresas').select('*').eq('activo', true).order('codigo')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setEmpresas(data);
+          setEmpresa(data[0]);
+        }
+      });
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!usuario || !password) { setError('Ingrese usuario y contraseña'); return; }
-    onLogin(usuario, empresa);
+    if (!username || !password || !empresa) {
+      setError('Complete todos los campos'); return;
+    }
+    setCargando(true); setError('');
+    const { data, error: err } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('username', username)
+      .eq('password', password)
+      .eq('activo', true)
+      .single();
+
+    setCargando(false);
+    if (err || !data) { setError('Usuario o contraseña incorrectos'); return; }
+    onLogin(data, empresa);
   };
 
   return (
@@ -308,20 +182,22 @@ function Login({ onLogin }: { onLogin: (u: string, e: typeof empresas[0]) => voi
         <form onSubmit={handleSubmit}>
           <label className="field-label">Usuario</label>
           <input className="field-input" type="text" placeholder="Ingrese su usuario"
-            value={usuario} onChange={e => setUsuario(e.target.value)} />
+            value={username} onChange={e => setUsername(e.target.value)} />
           <label className="field-label">Contraseña</label>
           <input className="field-input" type="password" placeholder="••••••••"
             value={password} onChange={e => setPassword(e.target.value)} />
           <label className="field-label">Empresa</label>
-          <select className="field-input" value={empresa.codigo}
-            onChange={e => setEmpresa(empresas.find(x => x.codigo === e.target.value) || empresas[0])}>
+          <select className="field-input" value={empresa?.codigo || ''}
+            onChange={e => setEmpresa(empresas.find(x => x.codigo === e.target.value) || null)}>
             {empresas.map(emp => (
               <option key={emp.codigo} value={emp.codigo}>{emp.codigo} — {emp.nombre}</option>
             ))}
           </select>
-          <div className="field-hint">Cédula: {empresa.cedula}</div>
+          <div className="field-hint">Cédula: {empresa?.cedula}</div>
           {error && <div className="login-error">{error}</div>}
-          <button className="btn-login" type="submit">Ingresar al Sistema →</button>
+          <button className="btn-login" type="submit" disabled={cargando}>
+            {cargando ? 'Verificando...' : 'Ingresar al Sistema →'}
+          </button>
         </form>
         <div className="login-footer">Sistema MYA v3.0 · {new Date().getFullYear()}</div>
       </div>
@@ -330,7 +206,7 @@ function Login({ onLogin }: { onLogin: (u: string, e: typeof empresas[0]) => voi
 }
 
 function Dashboard({ usuario, empresa, onSalir }: {
-  usuario: string; empresa: typeof empresas[0]; onSalir: () => void;
+  usuario: Usuario; empresa: Empresa; onSalir: () => void;
 }) {
   const [moduloActivo, setModuloActivo] = useState('');
   const favoritos = modulos.filter(m => FAVORITOS_DEFAULT.includes(m.id));
@@ -341,7 +217,6 @@ function Dashboard({ usuario, empresa, onSalir }: {
 
   return (
     <div className="app-shell">
-      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="sidebar-logo">
           <div className="sidebar-logo-inner">M</div>
@@ -362,7 +237,6 @@ function Dashboard({ usuario, empresa, onSalir }: {
         </div>
       </aside>
 
-      {/* NAVBAR */}
       <nav className="navbar">
         <div className="navbar-company">
           <div className="navbar-company-name">{empresa.nombre}</div>
@@ -373,29 +247,25 @@ function Dashboard({ usuario, empresa, onSalir }: {
           <div className="navbar-badge">Ver <span>3.0</span></div>
           <div className="navbar-clock"><Clock /></div>
           <div className="navbar-user">
-            <div className="navbar-avatar">{usuario[0]?.toUpperCase()}</div>
-            <span className="navbar-username">{usuario}</span>
+            <div className="navbar-avatar">{usuario.username[0]?.toUpperCase()}</div>
+            <span className="navbar-username">{usuario.nombre}</span>
           </div>
         </div>
       </nav>
 
-      {/* MAIN */}
       <main className="main-content">
-
-        {/* Welcome bar */}
         <div className="welcome-bar">
-          <div className="welcome-bar-avatar">{usuario[0]?.toUpperCase()}</div>
+          <div className="welcome-bar-avatar">{usuario.nombre[0]?.toUpperCase()}</div>
           <div className="welcome-bar-text">
-            <h2>Bienvenido, {usuario}</h2>
+            <h2>Bienvenido, {usuario.nombre}</h2>
             <p>Sus accesos directos están listos</p>
           </div>
           <div className="welcome-bar-right">
             <div className="welcome-bar-cia">CIA {empresa.codigo}</div>
-            <div className="welcome-bar-date capitalize">{fecha}</div>
+            <div className="welcome-bar-date">{fecha}</div>
           </div>
         </div>
 
-        {/* Favoritos */}
         <div className="section-title">⭐ Accesos Directos</div>
         <div className="favoritos-grid">
           {favoritos.map(mod => (
@@ -409,7 +279,6 @@ function Dashboard({ usuario, empresa, onSalir }: {
           ))}
         </div>
 
-        {/* Otros módulos */}
         <div className="section-title">Todos los Módulos</div>
         <div className="all-grid">
           {otrosModulos.map(mod => (
@@ -420,14 +289,14 @@ function Dashboard({ usuario, empresa, onSalir }: {
             </div>
           ))}
         </div>
-
       </main>
     </div>
   );
 }
 
 function App() {
-  const [sesion, setSesion] = useState<{ usuario: string; empresa: typeof empresas[0] } | null>(null);
+  const [sesion, setSesion] = useState<{ usuario: Usuario; empresa: Empresa } | null>(null);
+
   return (
     <>
       <style>{styles}</style>
