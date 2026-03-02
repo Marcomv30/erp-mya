@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import ListaEmpresas from './pages/Empresas/ListaEmpresas';
+import ListaActividades from './pages/Mantenimientos/ListaActividades';
 
 interface Empresa {
   id: number;
@@ -210,6 +211,7 @@ function Dashboard({ usuario, empresa, onSalir }: {
   usuario: Usuario; empresa: Empresa; onSalir: () => void;
 }) {
   const [moduloActivo, setModuloActivo] = useState('');
+  const [submenu, setSubmenu] = useState('');
   const favoritos = modulos.filter(m => FAVORITOS_DEFAULT.includes(m.id));
   const otrosModulos = modulos.filter(m => !FAVORITOS_DEFAULT.includes(m.id));
   const fecha = new Date().toLocaleDateString('es-CR', {
@@ -226,8 +228,7 @@ function Dashboard({ usuario, empresa, onSalir }: {
           <React.Fragment key={mod.id}>
             {i === 9 && <div className="sidebar-divider" />}
             <div className={`sidebar-item ${moduloActivo === mod.id ? 'active' : ''}`}
-              onClick={() => setModuloActivo(mod.id)} title={mod.nombre}>
-              <span className="sidebar-icon">{mod.icono}</span>
+              onClick={() => { setModuloActivo(mod.id); setSubmenu(''); }} title={mod.nombre}>              <span className="sidebar-icon">{mod.icono}</span>
               <span className="sidebar-label">{mod.nombre}</span>
             </div>
           </React.Fragment>
@@ -255,46 +256,98 @@ function Dashboard({ usuario, empresa, onSalir }: {
       </nav>
 
     <main className="main-content">
-      {moduloActivo === 'mantenimientos'
-        ? <ListaEmpresas />
-        : (
-          <>
-            <div className="welcome-bar">
-              <div className="welcome-bar-avatar">{usuario.nombre[0]?.toUpperCase()}</div>
-              <div className="welcome-bar-text">
-                <h2>Bienvenido, {usuario.nombre}</h2>
-                <p>Sus accesos directos están listos</p>
+
+      {/* BREADCRUMB */}
+      {moduloActivo && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          marginBottom: '20px', fontSize: '13px', color: '#9ca3af'
+        }}>
+          <span style={{ cursor: 'pointer', color: '#16a34a', fontWeight: 500 }}
+            onClick={() => { setModuloActivo(''); setSubmenu(''); }}>
+            Inicio
+          </span>
+          <span>›</span>
+          <span style={{ color: submenu ? '#9ca3af' : '#1f2937', fontWeight: 500,
+            cursor: submenu ? 'pointer' : 'default' }}
+            onClick={() => submenu ? setSubmenu('') : null}>
+            {modulos.find(m => m.id === moduloActivo)?.nombre || moduloActivo}
+          </span>
+          {submenu && (
+            <>
+              <span>›</span>
+              <span style={{ color: '#1f2937', fontWeight: 500 }}>
+                {submenu === 'empresas' ? 'Empresas' :
+                submenu === 'actividades' ? 'Actividades' :
+                submenu === 'usuarios' ? 'Usuarios' :
+                submenu === 'roles' ? 'Roles' :
+                submenu === 'modulos' ? 'Módulos' : submenu}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'empresas' && <ListaEmpresas />}
+      {moduloActivo === 'mantenimientos' && submenu === 'actividades' && <ListaActividades />}
+      {moduloActivo === 'mantenimientos' && submenu === '' && (
+        <div>
+          <div className="section-title" style={{ marginBottom: '20px' }}>
+            🔧 Mantenimientos
+          </div>
+          <div className="favoritos-grid">
+            {[
+              { id: 'empresas', nombre: 'Empresas', icono: '🏢' },
+              { id: 'actividades', nombre: 'Actividades', icono: '🏭' },
+              { id: 'usuarios', nombre: 'Usuarios', icono: '👤' },
+              { id: 'roles', nombre: 'Roles', icono: '🔑' },
+              { id: 'modulos', nombre: 'Módulos', icono: '📋' },
+            ].map(item => (
+              <div key={item.id} className="fav-card" onClick={() => setSubmenu(item.id)}>
+                <div className="fav-icon">{item.icono}</div>
+                <div className="fav-name">{item.nombre}</div>
+                <div className="fav-arrow">Abrir →</div>
               </div>
-              <div className="welcome-bar-right">
-                <div className="welcome-bar-cia">CIA {empresa.codigo}</div>
-                <div className="welcome-bar-date">{fecha}</div>
+            ))}
+          </div>
+        </div>
+      )}
+      {moduloActivo !== 'mantenimientos' && (
+        <>
+          <div className="welcome-bar">
+            <div className="welcome-bar-avatar">{usuario.nombre[0]?.toUpperCase()}</div>
+            <div className="welcome-bar-text">
+              <h2>Bienvenido, {usuario.nombre}</h2>
+              <p>Sus accesos directos están listos</p>
+            </div>
+            <div className="welcome-bar-right">
+              <div className="welcome-bar-cia">CIA {empresa.codigo}</div>
+              <div className="welcome-bar-date">{fecha}</div>
+            </div>
+          </div>
+          <div className="section-title">⭐ Accesos Directos</div>
+          <div className="favoritos-grid">
+            {favoritos.map(mod => (
+              <div key={mod.id}
+                className={`fav-card ${moduloActivo === mod.id ? 'active' : ''}`}
+                onClick={() => setModuloActivo(mod.id)}>
+                <div className="fav-icon">{mod.icono}</div>
+                <div className="fav-name">{mod.nombre}</div>
+                <div className="fav-arrow">Abrir →</div>
               </div>
-            </div>
-            <div className="section-title">⭐ Accesos Directos</div>
-            <div className="favoritos-grid">
-              {favoritos.map(mod => (
-                <div key={mod.id}
-                  className={`fav-card ${moduloActivo === mod.id ? 'active' : ''}`}
-                  onClick={() => setModuloActivo(mod.id)}>
-                  <div className="fav-icon">{mod.icono}</div>
-                  <div className="fav-name">{mod.nombre}</div>
-                  <div className="fav-arrow">Abrir →</div>
-                </div>
-              ))}
-            </div>
-            <div className="section-title">Todos los Módulos</div>
-            <div className="all-grid">
-              {otrosModulos.map(mod => (
-                <div key={mod.id} className="mod-card"
-                  onClick={() => setModuloActivo(mod.id)}>
-                  <div className="mod-icon">{mod.icono}</div>
-                  <div className="mod-name">{mod.nombre}</div>
-                </div>
-              ))}
-            </div>
-          </>
-        )
-      }
+            ))}
+          </div>
+          <div className="section-title">Todos los Módulos</div>
+          <div className="all-grid">
+            {otrosModulos.map(mod => (
+              <div key={mod.id} className="mod-card"
+                onClick={() => { setModuloActivo(mod.id); setSubmenu(''); }}>
+                <div className="mod-icon">{mod.icono}</div>
+                <div className="mod-name">{mod.nombre}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </main>
     </div>
   );
