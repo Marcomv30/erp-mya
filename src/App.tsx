@@ -3,6 +3,8 @@ import { supabase } from './supabase';
 import ListaEmpresas from './pages/Empresas/ListaEmpresas';
 import ListaActividades from './pages/Mantenimientos/ListaActividades';
 import ListaUsuarios from './pages/Mantenimientos/ListaUsuarios';
+import ListaRoles from './pages/Mantenimientos/ListaRoles';
+import PlanCuentas from './pages/Contabilidad/PlanCuentas';
 
 interface Empresa {
   id: number;
@@ -257,7 +259,30 @@ function Dashboard({ usuario, empresa, onSalir }: {
       </nav>
 
     <main className="main-content">
+      {moduloActivo === 'mantenimientos' && submenu === 'roles' && <ListaRoles />}
       {moduloActivo === 'mantenimientos' && submenu === 'usuarios' && <ListaUsuarios />}
+      {moduloActivo === 'contabilidad' && submenu === 'plancuentas' && <PlanCuentas />}
+      {moduloActivo === 'contabilidad' && submenu === '' && (
+      <div>
+        <div className="section-title" style={{ marginBottom: '20px' }}>
+          📒 Contabilidad
+        </div>
+        <div className="favoritos-grid">
+          {[
+            { id: 'plancuentas', nombre: 'Plan de Cuentas', icono: '📋' },
+            { id: 'asientos', nombre: 'Asientos', icono: '📝' },
+            { id: 'mayorgeneral', nombre: 'Mayor General', icono: '📚' },
+            { id: 'balancecomprobacion', nombre: 'Balance Comprobación', icono: '⚖️' },
+          ].map(item => (
+            <div key={item.id} className="fav-card" onClick={() => setSubmenu(item.id)}>
+              <div className="fav-icon">{item.icono}</div>
+              <div className="fav-name">{item.nombre}</div>
+              <div className="fav-arrow">Abrir →</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
       {/* BREADCRUMB */}
       {moduloActivo && (
         <div style={{
@@ -282,7 +307,8 @@ function Dashboard({ usuario, empresa, onSalir }: {
                 submenu === 'actividades' ? 'Actividades' :
                 submenu === 'usuarios' ? 'Usuarios' :
                 submenu === 'roles' ? 'Roles' :
-                submenu === 'modulos' ? 'Módulos' : submenu}
+                submenu === 'modulos' ? 'Módulos' : 
+                submenu === 'plancuentas' ? 'Plan de Cuentas' :submenu}
               </span>
             </>
           )}
