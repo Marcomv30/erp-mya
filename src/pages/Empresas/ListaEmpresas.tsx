@@ -28,6 +28,7 @@ interface Empresa {
   activo: boolean;
   multimoneda: boolean;
   factura_electronica: boolean;
+  actividad_id: number | null;
 }
 
 const styles = `

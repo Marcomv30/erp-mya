@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 
 interface Empresa {
@@ -27,6 +27,7 @@ interface Empresa {
   activo: boolean;
   multimoneda: boolean;
   factura_electronica: boolean;
+  actividad_id: number | null;
 }
 
 const estilos = `
@@ -79,8 +80,13 @@ const vacio: Empresa = {
   fax: '', actividad: '', email: '', rep_nombre: '', rep_apellido1: '',
   rep_apellido2: '', rep_cedula: '', rep_domicilio: '', contador: '',
   imp_venta: 1.00, imp_incluido: true, activo: true,
-  multimoneda: false, factura_electronica: false,
+  multimoneda: false, factura_electronica: false, actividad_id: null,
 };
+interface Actividad {
+  id: number;
+  codigo: string;
+  descripcion: string;
+}
 
 export default function FormEmpresa({ empresa, onGuardar, onCancelar }: {
   empresa: Empresa | null;
@@ -89,6 +95,12 @@ export default function FormEmpresa({ empresa, onGuardar, onCancelar }: {
 }) {
   const [form, setForm] = useState<Empresa>(empresa ? { ...empresa } : { ...vacio });
   const [guardando, setGuardando] = useState(false);
+  const [actividades, setActividades] = useState<Actividad[]>([]);
+    useEffect(() => {
+    supabase.from('actividad_empresa')
+        .select('*').eq('activo', true).order('descripcion')
+        .then(({ data }) => { if (data) setActividades(data); });
+    }, []);
   const [exito, setExito] = useState('');
   const [errores, setErrores] = useState<Partial<Record<keyof Empresa, string>>>({});
 
@@ -153,8 +165,13 @@ export default function FormEmpresa({ empresa, onGuardar, onCancelar }: {
             </div>
             <div className="form-group">
               <label className="form-label">Actividad</label>
-              <input className="form-input" value={form.actividad}
-                onChange={e => set('actividad', e.target.value)} placeholder="Agricultura" />
+                <select className="form-input" value={form.actividad_id || ''}
+                onChange={e => set('actividad_id', e.target.value ? parseInt(e.target.value) : null)}>
+                <option value="">-- Seleccione --</option>
+                {actividades.map(act => (
+                    <option key={act.id} value={act.id}>{act.codigo} - {act.descripcion}</option>
+                ))}
+                </select>
             </div>
             <div className="form-group span3">
               <label className="form-label">Nombre *</label>
