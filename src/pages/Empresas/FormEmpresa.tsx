@@ -169,7 +169,7 @@ export default function FormEmpresa({ empresa, onGuardar, onCancelar }: {
                 onChange={e => set('actividad_id', e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">-- Seleccione --</option>
                 {actividades.map(act => (
-                    <option key={act.id} value={act.id}>{act.codigo} - {act.descripcion}</option>
+                    <option key={act.id} value={act.id}>{act.descripcion}</option>
                 ))}
                 </select>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import ListaEmpresas from './pages/Empresas/ListaEmpresas';
 import ListaActividades from './pages/Mantenimientos/ListaActividades';
+import ListaUsuarios from './pages/Mantenimientos/ListaUsuarios';
 
 interface Empresa {
   id: number;
@@ -256,7 +257,7 @@ function Dashboard({ usuario, empresa, onSalir }: {
       </nav>
 
     <main className="main-content">
-
+      {moduloActivo === 'mantenimientos' && submenu === 'usuarios' && <ListaUsuarios />}
       {/* BREADCRUMB */}
       {moduloActivo && (
         <div style={{
