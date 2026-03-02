@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
+import FormCuenta from './FormCuenta';
 
 interface Cuenta {
   id: number;
@@ -90,6 +91,7 @@ const styles = `
   .btn-nuevo:hover { opacity:0.9; }
 `;
 
+
 const getInforme = (tipo: string) => {
   if (['ACTIVO', 'PASIVO', 'CAPITAL'].includes(tipo)) return 'BALANCE';
   return 'RESULTADOS';
@@ -104,7 +106,9 @@ export default function PlanCuentas() {
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
-
+  const [vista, setVista] = useState<'lista' | 'nuevo' | 'editar'>('lista');
+  const [cuentaEditar, setCuentaEditar] = useState<any>(null); 
+  
   const cargar = async () => {
     setCargando(true);
     const { data } = await supabase
@@ -115,6 +119,7 @@ export default function PlanCuentas() {
     setCargando(false);
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { cargar(); }, []);
 
   const cuentasFiltradas = cuentas.filter(c => {
@@ -124,6 +129,7 @@ export default function PlanCuentas() {
       const b = busqueda.toLowerCase();
       return c.codigo.toLowerCase().includes(b) || c.nombre.toLowerCase().includes(b);
     }
+
     return true;
   });
 
@@ -135,6 +141,22 @@ export default function PlanCuentas() {
     resultados: cuentas.filter(c => ['INGRESO','GASTO'].includes(c.tipo)).length,
   };
 
+    if (vista === 'nuevo') {
+    return <FormCuenta
+        cuenta={null}
+        onGuardar={() => { setVista('lista'); cargar(); }}
+        onCancelar={() => setVista('lista')}
+    />;
+    }
+
+    if (vista === 'editar' && cuentaEditar) {
+    return <FormCuenta
+        cuenta={cuentaEditar}
+        onGuardar={() => { setVista('lista'); cargar(); }}
+        onCancelar={() => setVista('lista')}
+    />;
+    }
+
   return (
     <>
       <style>{styles}</style>
@@ -144,7 +166,9 @@ export default function PlanCuentas() {
             Plan de Cuentas
             <span>{cuentasFiltradas.length} de {cuentas.length} cuentas</span>
           </div>
-          <button className="btn-nuevo">+ Nueva Cuenta</button>
+          <button className="btn-nuevo" onClick={() => setVista('nuevo')}>
+            + Nueva Cuenta
+            </button>
         </div>
 
         {/* Estadísticas */}
@@ -205,6 +229,7 @@ export default function PlanCuentas() {
                 <th>Naturaleza</th>
                 <th>Informe</th>
                 <th>Movimiento</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -249,6 +274,16 @@ export default function PlanCuentas() {
                       {cuenta.acepta_movimiento ? '✓' : '·'}
                     </span>
                   </td>
+
+                <td>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                        <button style={{ padding:'4px 10px', background:'#eff6ff', border:'1px solid #bfdbfe',
+                        borderRadius:'6px', color:'#2563eb', fontSize:'11px', cursor:'pointer' }}
+                        onClick={() => { setCuentaEditar(cuenta); setVista('editar'); }}>
+                        Editar
+                        </button>
+                    </div>
+                </td>
                 </tr>
               ))}
             </tbody>
