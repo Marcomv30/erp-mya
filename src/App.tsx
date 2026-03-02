@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
+import ListaEmpresas from './pages/Empresas/ListaEmpresas';
 
 interface Empresa {
   id: number;
@@ -253,43 +254,48 @@ function Dashboard({ usuario, empresa, onSalir }: {
         </div>
       </nav>
 
-      <main className="main-content">
-        <div className="welcome-bar">
-          <div className="welcome-bar-avatar">{usuario.nombre[0]?.toUpperCase()}</div>
-          <div className="welcome-bar-text">
-            <h2>Bienvenido, {usuario.nombre}</h2>
-            <p>Sus accesos directos están listos</p>
-          </div>
-          <div className="welcome-bar-right">
-            <div className="welcome-bar-cia">CIA {empresa.codigo}</div>
-            <div className="welcome-bar-date">{fecha}</div>
-          </div>
-        </div>
-
-        <div className="section-title">⭐ Accesos Directos</div>
-        <div className="favoritos-grid">
-          {favoritos.map(mod => (
-            <div key={mod.id}
-              className={`fav-card ${moduloActivo === mod.id ? 'active' : ''}`}
-              onClick={() => setModuloActivo(mod.id)}>
-              <div className="fav-icon">{mod.icono}</div>
-              <div className="fav-name">{mod.nombre}</div>
-              <div className="fav-arrow">Abrir →</div>
+    <main className="main-content">
+      {moduloActivo === 'mantenimientos'
+        ? <ListaEmpresas />
+        : (
+          <>
+            <div className="welcome-bar">
+              <div className="welcome-bar-avatar">{usuario.nombre[0]?.toUpperCase()}</div>
+              <div className="welcome-bar-text">
+                <h2>Bienvenido, {usuario.nombre}</h2>
+                <p>Sus accesos directos están listos</p>
+              </div>
+              <div className="welcome-bar-right">
+                <div className="welcome-bar-cia">CIA {empresa.codigo}</div>
+                <div className="welcome-bar-date">{fecha}</div>
+              </div>
             </div>
-          ))}
-        </div>
-
-        <div className="section-title">Todos los Módulos</div>
-        <div className="all-grid">
-          {otrosModulos.map(mod => (
-            <div key={mod.id} className="mod-card"
-              onClick={() => setModuloActivo(mod.id)}>
-              <div className="mod-icon">{mod.icono}</div>
-              <div className="mod-name">{mod.nombre}</div>
+            <div className="section-title">⭐ Accesos Directos</div>
+            <div className="favoritos-grid">
+              {favoritos.map(mod => (
+                <div key={mod.id}
+                  className={`fav-card ${moduloActivo === mod.id ? 'active' : ''}`}
+                  onClick={() => setModuloActivo(mod.id)}>
+                  <div className="fav-icon">{mod.icono}</div>
+                  <div className="fav-name">{mod.nombre}</div>
+                  <div className="fav-arrow">Abrir →</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </main>
+            <div className="section-title">Todos los Módulos</div>
+            <div className="all-grid">
+              {otrosModulos.map(mod => (
+                <div key={mod.id} className="mod-card"
+                  onClick={() => setModuloActivo(mod.id)}>
+                  <div className="mod-icon">{mod.icono}</div>
+                  <div className="mod-name">{mod.nombre}</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )
+      }
+    </main>
     </div>
   );
 }
