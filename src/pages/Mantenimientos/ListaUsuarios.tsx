@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
 
 interface Usuario {
   id: number;
   username: string;
-  password: string;
   nombre: string;
   email: string;
   activo: boolean;
+  es_superusuario?: boolean;
+  auth_user_id?: string | null;
 }
 
 interface Empresa {
@@ -30,6 +31,12 @@ interface UsuarioEmpresa {
   roles: { nombre: string };
 }
 
+interface ListaUsuariosProps {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
 const styles = `
   .usr-wrap { padding:0; }
   .usr-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
@@ -39,7 +46,7 @@ const styles = `
     background:linear-gradient(135deg,#16a34a,#22c55e); border:none; border-radius:10px;
     color:white; font-size:13px; font-weight:600; cursor:pointer; transition:opacity 0.2s; }
   .btn-nuevo:hover { opacity:0.9; }
-  .usr-layout { display:grid; grid-template-columns:1fr 1.4fr; gap:20px; align-items:start; }
+  .usr-layout { display:grid; grid-template-columns:1fr 1.2fr; gap:20px; align-items:start; }
   .usr-table-wrap { background:white; border-radius:14px; border:1px solid #e5e7eb;
     overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
   .usr-table { width:100%; border-collapse:collapse; }
@@ -58,6 +65,7 @@ const styles = `
     border-radius:6px; font-size:11px; font-weight:500; }
   .usr-badge.activo { background:#dcfce7; color:#16a34a; }
   .usr-badge.inactivo { background:#fee2e2; color:#dc2626; }
+  .usr-badge.super { background:#ede9fe; color:#6d28d9; }
   .usr-actions { display:flex; gap:6px; }
   .btn-edit { padding:5px 10px; background:#eff6ff; border:1px solid #bfdbfe;
     border-radius:6px; color:#2563eb; font-size:11px; font-weight:500; cursor:pointer; }
@@ -65,12 +73,16 @@ const styles = `
   .btn-del { padding:5px 10px; background:#fef2f2; border:1px solid #fecaca;
     border-radius:6px; color:#dc2626; font-size:11px; font-weight:500; cursor:pointer; }
   .btn-del:hover { background:#dc2626; color:white; }
+  .btn-reset { padding:5px 10px; background:#fffbeb; border:1px solid #fde68a;
+    border-radius:6px; color:#b45309; font-size:11px; font-weight:500; cursor:pointer; }
+  .btn-reset:hover { background:#f59e0b; color:white; border-color:#f59e0b; }
 
-  /* Panel empresas */
   .emp-panel { background:white; border-radius:14px; border:1px solid #e5e7eb;
     padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
   .emp-panel-title { font-size:13px; font-weight:600; color:#1f2937; margin-bottom:4px; }
   .emp-panel-sub { font-size:12px; color:#9ca3af; margin-bottom:16px; }
+  .emp-info { font-size:12px; color:#075985; background:#e0f2fe; border:1px solid #bae6fd;
+    padding:10px 12px; border-radius:8px; margin-bottom:12px; }
   .emp-asignada { display:flex; align-items:center; justify-content:space-between;
     padding:10px 14px; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:8px; }
   .emp-asignada-info { display:flex; flex-direction:column; gap:2px; }
@@ -80,7 +92,7 @@ const styles = `
     border-radius:6px; color:#dc2626; font-size:11px; cursor:pointer; }
   .btn-quitar:hover { background:#dc2626; color:white; }
   .emp-agregar { display:grid; grid-template-columns:1fr 1fr auto; gap:8px;
-    margin-top:16px; padding-top:16px; border-top:1px solid #f3f4f6; align-items:end; }
+    margin-top:8px; margin-bottom:14px; align-items:end; }
   .emp-agregar-label { font-size:11px; font-weight:500; color:#6b7280;
     text-transform:uppercase; letter-spacing:0.04em; margin-bottom:4px; }
   .emp-select { width:100%; padding:8px 10px; border:1px solid #e5e7eb;
@@ -95,7 +107,6 @@ const styles = `
   .success-msg { padding:10px 14px; background:#dcfce7; border:1px solid #bbf7d0;
     border-radius:8px; color:#16a34a; font-size:12px; font-weight:500; margin-bottom:16px; }
 
-  /* Modal */
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5);
     display:flex; align-items:center; justify-content:center; z-index:1000; }
   .modal-box { background:white; border-radius:16px; padding:32px; width:420px;
@@ -122,7 +133,8 @@ const styles = `
   .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 `;
 
-export default function ListaUsuarios() {
+export default function ListaUsuarios({ canCreate = true, canEdit = true, canDelete = true }: ListaUsuariosProps) {
+  const [esAdminSuper, setEsAdminSuper] = useState(false);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
@@ -133,13 +145,27 @@ export default function ListaUsuarios() {
   const [exito, setExito] = useState('');
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState<Usuario | null>(null);
+  const [modalReset, setModalReset] = useState(false);
+  const [usuarioReset, setUsuarioReset] = useState<Usuario | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPassword2, setResetPassword2] = useState('');
   const [form, setForm] = useState({
-    username: '', password: '', nombre: '', email: '', activo: true
+    username: '', nombre: '', email: '', password: '', activo: true, es_superusuario: false,
   });
+
+  const mostrarExito = (msg: string) => {
+    setExito(msg);
+    setTimeout(() => setExito(''), 3000);
+  };
 
   const cargar = async () => {
     const { data } = await supabase.from('usuarios').select('*').order('nombre');
     if (data) setUsuarios(data);
+  };
+
+  const cargarPermisosAdmin = async () => {
+    const { data } = await supabase.rpc('is_superuser');
+    setEsAdminSuper(Boolean(data));
   };
 
   const cargarCatalogos = async () => {
@@ -147,8 +173,16 @@ export default function ListaUsuarios() {
       supabase.from('empresas').select('id,codigo,nombre').eq('activo', true).order('codigo'),
       supabase.from('roles').select('*').order('nombre'),
     ]);
-    if (emps) { setEmpresas(emps); setEmpresaAgregar(String(emps[0]?.id || '')); }
-    if (rols) { setRoles(rols); setRolAgregar(String(rols[0]?.id || '')); }
+
+    if (emps) {
+      setEmpresas(emps);
+      setEmpresaAgregar(String(emps[0]?.id || ''));
+    }
+
+    if (rols) {
+      setRoles(rols);
+      setRolAgregar(String(rols[0]?.id || ''));
+    }
   };
 
   const cargarEmpresasUsuario = async (usuarioId: number) => {
@@ -156,10 +190,15 @@ export default function ListaUsuarios() {
       .from('usuarios_empresas')
       .select('id, empresa_id, rol_id, activo, empresas(codigo, nombre), roles(nombre)')
       .eq('usuario_id', usuarioId);
-    if (data) setEmpresasUsuario(data as any);
+
+    if (data) setEmpresasUsuario(data as any as UsuarioEmpresa[]);
   };
 
-  useEffect(() => { cargar(); cargarCatalogos(); }, []);
+  useEffect(() => {
+    cargar();
+    cargarCatalogos();
+    cargarPermisosAdmin();
+  }, []);
 
   const seleccionar = (usr: Usuario) => {
     setSeleccionado(usr);
@@ -168,58 +207,162 @@ export default function ListaUsuarios() {
   };
 
   const agregarEmpresa = async () => {
-    if (!seleccionado || !empresaAgregar || !rolAgregar) return;
-    const yaExiste = empresasUsuario.find(e => e.empresa_id === parseInt(empresaAgregar));
-    if (yaExiste) { setExito('⚠️ Ya tiene acceso a esa empresa'); return; }
+    if (!canEdit || !seleccionado || !empresaAgregar || !rolAgregar) return;
+
+    const yaExiste = empresasUsuario.find((e) => e.empresa_id === parseInt(empresaAgregar, 10));
+    if (yaExiste) {
+      mostrarExito('Ya tiene acceso a esa empresa');
+      return;
+    }
+
     await supabase.from('usuarios_empresas').insert({
       usuario_id: seleccionado.id,
-      empresa_id: parseInt(empresaAgregar),
-      rol_id: parseInt(rolAgregar),
+      empresa_id: parseInt(empresaAgregar, 10),
+      rol_id: parseInt(rolAgregar, 10),
       activo: true,
     });
-    cargarEmpresasUsuario(seleccionado.id);
-    mostrarExito(`Empresa asignada correctamente`);
+
+    await cargarEmpresasUsuario(seleccionado.id);
+    mostrarExito('Empresa asignada correctamente');
   };
 
   const quitarEmpresa = async (id: number) => {
+    if (!canEdit) return;
     await supabase.from('usuarios_empresas').delete().eq('id', id);
-    if (seleccionado) cargarEmpresasUsuario(seleccionado.id);
-  };
-
-  const mostrarExito = (msg: string) => {
-    setExito(msg); setTimeout(() => setExito(''), 3000);
+    if (seleccionado) await cargarEmpresasUsuario(seleccionado.id);
   };
 
   const abrirNuevo = () => {
+    if (!canCreate) return;
     setEditando(null);
-    setForm({ username: '', password: '', nombre: '', email: '', activo: true });
+    setForm({ username: '', nombre: '', email: '', password: '', activo: true, es_superusuario: false });
     setModal(true);
   };
 
   const abrirEditar = (usr: Usuario) => {
+    if (!canEdit) return;
     setEditando(usr);
-    setForm({ username: usr.username, password: usr.password,
-      nombre: usr.nombre, email: usr.email || '', activo: usr.activo });
+    setForm({
+      username: usr.username,
+      nombre: usr.nombre,
+      email: usr.email || '',
+      password: '',
+      activo: usr.activo,
+      es_superusuario: Boolean(usr.es_superusuario),
+    });
     setModal(true);
   };
 
-  const guardarUsuario = async () => {
-    if (!form.username || !form.password || !form.nombre) return;
-    if (editando) {
-      await supabase.from('usuarios').update(form).eq('id', editando.id);
-    } else {
-      await supabase.from('usuarios').insert(form);
+  const abrirReset = (usr: Usuario) => {
+    if (!canEdit) return;
+    setUsuarioReset(usr);
+    setResetPassword('');
+    setResetPassword2('');
+    setModalReset(true);
+  };
+
+  const confirmarReset = async () => {
+    if (!canEdit || !usuarioReset) return;
+
+    if (!resetPassword || resetPassword.length < 6) {
+      mostrarExito('La contrasena debe tener minimo 6 caracteres');
+      return;
     }
+
+    if (resetPassword !== resetPassword2) {
+      mostrarExito('Las contrasenas no coinciden');
+      return;
+    }
+
+    const { error } = await supabase.rpc('reset_user_password_with_access', {
+      p_usuario_id: usuarioReset.id,
+      p_password: resetPassword,
+    });
+
+    if (error) {
+      mostrarExito(error.message);
+      return;
+    }
+
+    setModalReset(false);
+    mostrarExito(`Contrasena actualizada para ${usuarioReset.username}`);
+  };
+
+  const guardarUsuario = async () => {
+    if (editando && !canEdit) return;
+    if (!editando && !canCreate) return;
+    if (!form.username || !form.nombre || !form.email) return;
+
+    if (editando) {
+      const { error: updateError } = await supabase.from('usuarios').update({
+        username: form.username,
+        nombre: form.nombre,
+        email: form.email,
+        activo: form.activo,
+      }).eq('id', editando.id);
+
+      if (updateError) {
+        mostrarExito(updateError.message);
+        return;
+      }
+
+      if (esAdminSuper) {
+        const { error: superError } = await supabase.rpc('set_user_superuser', {
+          p_usuario_id: editando.id,
+          p_es_superusuario: form.es_superusuario,
+        });
+        if (superError) {
+          mostrarExito(superError.message);
+          return;
+        }
+      }
+
+      mostrarExito('Usuario actualizado');
+    } else {
+      if (!form.password || !empresaAgregar || !rolAgregar) {
+        mostrarExito('Complete contrasena, empresa y rol inicial');
+        return;
+      }
+
+      const { data: nuevoUsuarioId, error } = await supabase.rpc('create_user_with_access', {
+        p_username: form.username.trim(),
+        p_nombre: form.nombre.trim(),
+        p_email: form.email.trim().toLowerCase(),
+        p_password: form.password,
+        p_empresa_id: parseInt(empresaAgregar, 10),
+        p_rol_id: parseInt(rolAgregar, 10),
+        p_activo: form.activo,
+      });
+
+      if (error) {
+        mostrarExito(error.message);
+        return;
+      }
+
+      if (esAdminSuper) {
+        const { error: superError } = await supabase.rpc('set_user_superuser', {
+          p_usuario_id: Number(nuevoUsuarioId),
+          p_es_superusuario: form.es_superusuario,
+        });
+        if (superError) {
+          mostrarExito(superError.message);
+          return;
+        }
+      }
+
+      mostrarExito('Usuario creado y vinculado en Auth correctamente');
+    }
+
     setModal(false);
-    cargar();
-    mostrarExito(editando ? 'Usuario actualizado' : 'Usuario creado correctamente');
+    await cargar();
   };
 
   const eliminar = async (usr: Usuario) => {
+    if (!canDelete) return;
     await supabase.from('usuarios_empresas').delete().eq('usuario_id', usr.id);
     await supabase.from('usuarios').delete().eq('id', usr.id);
     if (seleccionado?.id === usr.id) setSeleccionado(null);
-    cargar();
+    await cargar();
   };
 
   return (
@@ -227,16 +370,13 @@ export default function ListaUsuarios() {
       <style>{styles}</style>
       <div className="usr-wrap">
         <div className="usr-header">
-          <div className="usr-title">
-            Usuarios <span>{usuarios.length} registros</span>
-          </div>
-          <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Usuario</button>
+          <div className="usr-title">Usuarios <span>{usuarios.length} registros</span></div>
+          {canCreate && <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Usuario</button>}
         </div>
 
         {exito && <div className="success-msg">{exito}</div>}
 
         <div className="usr-layout">
-          {/* Tabla usuarios */}
           <div className="usr-table-wrap">
             <table className="usr-table">
               <thead>
@@ -244,33 +384,52 @@ export default function ListaUsuarios() {
                   <th></th>
                   <th>Usuario</th>
                   <th>Nombre</th>
+                  <th>Nivel</th>
+                  <th>Auth</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {usuarios.length === 0 ? (
-                  <tr><td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af' }}>
-                    No hay usuarios registrados
-                  </td></tr>
-                ) : usuarios.map(usr => (
-                  <tr key={usr.id}
-                    className={seleccionado?.id === usr.id ? 'selected' : ''}
-                    onClick={() => seleccionar(usr)}>
-                    <td>
-                      <div className="usr-avatar">{usr.nombre[0]?.toUpperCase()}</div>
+                  <tr>
+                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af' }}>
+                      No hay usuarios registrados
                     </td>
+                  </tr>
+                ) : usuarios.map((usr) => (
+                  <tr
+                    key={usr.id}
+                    className={seleccionado?.id === usr.id ? 'selected' : ''}
+                    onClick={() => seleccionar(usr)}
+                  >
+                    <td><div className="usr-avatar">{usr.nombre[0]?.toUpperCase()}</div></td>
                     <td><strong>{usr.username}</strong></td>
                     <td>{usr.nombre}</td>
+                    <td>
+                      {usr.es_superusuario ? (
+                        <span className="usr-badge super">Super Usuario</span>
+                      ) : null}
+                    </td>
+                    <td>
+                      <span className={`usr-badge ${usr.auth_user_id ? 'activo' : 'inactivo'}`}>
+                        {usr.auth_user_id ? 'Vinculado' : 'Pendiente'}
+                      </span>
+                    </td>
                     <td>
                       <span className={`usr-badge ${usr.activo ? 'activo' : 'inactivo'}`}>
                         {usr.activo ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
                     <td>
-                      <div className="usr-actions" onClick={e => e.stopPropagation()}>
-                        <button className="btn-edit" onClick={() => abrirEditar(usr)}>Editar</button>
-                        <button className="btn-del" onClick={() => eliminar(usr)}>Eliminar</button>
+                      <div className="usr-actions" onClick={(e) => e.stopPropagation()}>
+                        {canEdit && (
+                          <>
+                            <button className="btn-edit" onClick={() => abrirEditar(usr)}>Editar</button>
+                            <button className="btn-reset" onClick={() => abrirReset(usr)}>Reset clave</button>
+                          </>
+                        )}
+                        {canDelete && <button className="btn-del" onClick={() => eliminar(usr)}>Eliminar</button>}
                       </div>
                     </td>
                   </tr>
@@ -279,66 +438,54 @@ export default function ListaUsuarios() {
             </table>
           </div>
 
-          {/* Panel empresas del usuario */}
           <div className="emp-panel">
             {!seleccionado ? (
-              <div className="panel-empty">
-                👆 Seleccione un usuario para gestionar sus empresas
-              </div>
+              <div className="panel-empty">Seleccione un usuario para gestionar sus empresas</div>
             ) : (
               <>
-                <div className="emp-panel-title">
-                  Empresas de: {seleccionado.nombre}
-                </div>
+                <div className="emp-panel-title">Empresas de: {seleccionado.nombre}</div>
                 <div className="emp-panel-sub">
-                  Empresas y roles asignados a este usuario
+                  Asigne empresa y rol para este usuario. Los modulos se administran desde Empresa/Actividad.
+                </div>
+                <div className="emp-info">
+                  Aqui solo se define Empresa + Rol. La visibilidad de modulos se configura en
+                  Mantenimientos {'>'} Actividades y se consulta desde Empresas.
                 </div>
 
-                {empresasUsuario.length === 0 ? (
-                  <div style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '16px' }}>
-                    Sin empresas asignadas aún
-                  </div>
-                ) : empresasUsuario.map(eu => (
-                  <div key={eu.id} className="emp-asignada">
-                    <div className="emp-asignada-info">
-                      <span className="emp-asignada-nombre">
-                        {(eu.empresas as any)?.codigo} — {(eu.empresas as any)?.nombre}
-                      </span>
-                      <span className="emp-asignada-rol">
-                        🔑 {(eu.roles as any)?.nombre}
-                      </span>
+                {canEdit && (
+                  <div className="emp-agregar">
+                    <div>
+                      <div className="emp-agregar-label">Empresa</div>
+                      <select className="emp-select" value={empresaAgregar} onChange={(e) => setEmpresaAgregar(e.target.value)}>
+                        {empresas.map((emp) => (
+                          <option key={emp.id} value={emp.id}>{emp.codigo} - {emp.nombre}</option>
+                        ))}
+                      </select>
                     </div>
-                    <button className="btn-quitar" onClick={() => quitarEmpresa(eu.id)}>
-                      Quitar
-                    </button>
+                    <div>
+                      <div className="emp-agregar-label">Rol</div>
+                      <select className="emp-select" value={rolAgregar} onChange={(e) => setRolAgregar(e.target.value)}>
+                        {roles.map((rol) => (
+                          <option key={rol.id} value={rol.id}>{rol.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button className="btn-agregar" onClick={agregarEmpresa}>+ Asignar</button>
                   </div>
-                ))}
+                )}
 
-                {/* Agregar empresa */}
-                <div className="emp-agregar">
-                  <div>
-                    <div className="emp-agregar-label">Empresa</div>
-                    <select className="emp-select" value={empresaAgregar}
-                      onChange={e => setEmpresaAgregar(e.target.value)}>
-                      {empresas.map(emp => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.codigo} — {emp.nombre}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <div className="emp-agregar-label">Rol</div>
-                    <select className="emp-select" value={rolAgregar}
-                      onChange={e => setRolAgregar(e.target.value)}>
-                      {roles.map(rol => (
-                        <option key={rol.id} value={rol.id}>{rol.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button className="btn-agregar" onClick={agregarEmpresa}>
-                    + Asignar
-                  </button>
+                <div>
+                  {empresasUsuario.length === 0 ? (
+                    <div style={{ color: '#9ca3af', fontSize: '13px' }}>Sin empresas asignadas aun</div>
+                  ) : empresasUsuario.map((eu) => (
+                    <div key={eu.id} className="emp-asignada">
+                      <div className="emp-asignada-info">
+                        <span className="emp-asignada-nombre">{(eu.empresas as any)?.codigo} - {(eu.empresas as any)?.nombre}</span>
+                        <span className="emp-asignada-rol">Rol: {(eu.roles as any)?.nombre}</span>
+                      </div>
+                      {canEdit && <button className="btn-quitar" onClick={() => quitarEmpresa(eu.id)}>Quitar</button>}
+                    </div>
+                  ))}
                 </div>
               </>
             )}
@@ -346,49 +493,89 @@ export default function ListaUsuarios() {
         </div>
       </div>
 
-      {/* Modal */}
       {modal && (
         <div className="modal-overlay">
           <div className="modal-box">
-            <div className="modal-title">
-              {editando ? 'Editar Usuario' : 'Nuevo Usuario'}
-            </div>
+            <div className="modal-title">{editando ? 'Editar Usuario' : 'Nuevo Usuario'}</div>
             <div className="modal-grid">
               <div className="modal-field">
                 <label className="modal-label">Usuario *</label>
-                <input className="modal-input" value={form.username}
-                  onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-                  placeholder="marco" />
+                <input className="modal-input" value={form.username} onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} />
               </div>
               <div className="modal-field">
-                <label className="modal-label">Contraseña *</label>
-                <input className="modal-input" type="password" value={form.password}
-                  onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                  placeholder="••••••••" />
+                <label className="modal-label">Email *</label>
+                <input className="modal-input" type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
               </div>
             </div>
+
+            {!editando && (
+              <>
+                <div className="modal-grid">
+                  <div className="modal-field">
+                    <label className="modal-label">Contrasena inicial *</label>
+                    <input className="modal-input" type="password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} />
+                  </div>
+                  <div className="modal-field">
+                    <label className="modal-label">Empresa inicial *</label>
+                    <select className="modal-input" value={empresaAgregar} onChange={(e) => setEmpresaAgregar(e.target.value)}>
+                      {empresas.map((emp) => (
+                        <option key={emp.id} value={emp.id}>{emp.codigo} - {emp.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="modal-field">
+                  <label className="modal-label">Rol inicial *</label>
+                  <select className="modal-input" value={rolAgregar} onChange={(e) => setRolAgregar(e.target.value)}>
+                    {roles.map((rol) => (
+                      <option key={rol.id} value={rol.id}>{rol.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+
             <div className="modal-field">
               <label className="modal-label">Nombre completo *</label>
-              <input className="modal-input" value={form.nombre}
-                onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                placeholder="Marco Antonio Morales" />
-            </div>
-            <div className="modal-field">
-              <label className="modal-label">Email</label>
-              <input className="modal-input" type="email" value={form.email}
-                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="correo@ejemplo.com" />
+              <input className="modal-input" value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} />
             </div>
             <label className="modal-check">
-              <input type="checkbox" checked={form.activo}
-                onChange={e => setForm(p => ({ ...p, activo: e.target.checked }))} />
+              <input type="checkbox" checked={form.activo} onChange={(e) => setForm((p) => ({ ...p, activo: e.target.checked }))} />
               <span>Usuario Activo</span>
             </label>
+            {esAdminSuper && (
+              <label className="modal-check" style={{ marginTop: '8px' }}>
+                <input
+                  type="checkbox"
+                  checked={form.es_superusuario}
+                  onChange={(e) => setForm((p) => ({ ...p, es_superusuario: e.target.checked }))}
+                />
+                <span>Super Usuario (sin restricciones)</span>
+              </label>
+            )}
             <div className="modal-actions">
               <button className="btn-cancelar" onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn-guardar" onClick={guardarUsuario}>
-                {editando ? 'Actualizar' : 'Crear'}
-              </button>
+              <button className="btn-guardar" onClick={guardarUsuario}>{editando ? 'Actualizar' : 'Crear'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalReset && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-title">Reset de contrasena: {usuarioReset?.username}</div>
+            <div className="modal-field">
+              <label className="modal-label">Nueva contrasena *</label>
+              <input className="modal-input" type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} />
+            </div>
+            <div className="modal-field">
+              <label className="modal-label">Confirmar contrasena *</label>
+              <input className="modal-input" type="password" value={resetPassword2} onChange={(e) => setResetPassword2(e.target.value)} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancelar" onClick={() => setModalReset(false)}>Cancelar</button>
+              <button className="btn-guardar" onClick={confirmarReset}>Actualizar clave</button>
             </div>
           </div>
         </div>

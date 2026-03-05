@@ -1,135 +1,350 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
 
 interface Rol {
   id: number;
   nombre: string;
-  descripcion: string;
+  descripcion: string | null;
 }
 
-const styles = `
-  .rol-wrap { padding:0; }
-  .rol-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
-  .rol-title { font-size:20px; font-weight:600; color:#1f2937; letter-spacing:-0.3px; }
-  .rol-title span { font-size:13px; font-weight:400; color:#9ca3af; margin-left:8px; }
-  .btn-nuevo { display:flex; align-items:center; gap:8px; padding:10px 18px;
-    background:linear-gradient(135deg,#16a34a,#22c55e); border:none; border-radius:10px;
-    color:white; font-size:13px; font-weight:600; cursor:pointer; transition:opacity 0.2s; }
-  .btn-nuevo:hover { opacity:0.9; }
-  .rol-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:16px; }
-  .rol-card { background:white; border:1px solid #e5e7eb; border-radius:14px;
-    padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.04); transition:all 0.2s; }
-  .rol-card:hover { border-color:#22c55e; box-shadow:0 4px 12px rgba(34,197,94,0.1); }
-  .rol-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-  .rol-icon { width:40px; height:40px; border-radius:10px;
-    background:linear-gradient(135deg,#16a34a,#22c55e);
-    display:flex; align-items:center; justify-content:center; font-size:18px; }
-  .rol-actions { display:flex; gap:6px; }
-  .btn-edit { padding:5px 10px; background:#eff6ff; border:1px solid #bfdbfe;
-    border-radius:6px; color:#2563eb; font-size:11px; font-weight:500; cursor:pointer; }
-  .btn-edit:hover { background:#2563eb; color:white; }
-  .btn-del { padding:5px 10px; background:#fef2f2; border:1px solid #fecaca;
-    border-radius:6px; color:#dc2626; font-size:11px; font-weight:500; cursor:pointer; }
-  .btn-del:hover { background:#dc2626; color:white; }
-  .rol-nombre { font-size:15px; font-weight:600; color:#1f2937; margin-bottom:4px; }
-  .rol-desc { font-size:12px; color:#9ca3af; line-height:1.4; }
-  .rol-usuarios { font-size:11px; color:#16a34a; font-weight:500; margin-top:12px;
-    padding-top:12px; border-top:1px solid #f3f4f6; }
-  .success-msg { padding:10px 14px; background:#dcfce7; border:1px solid #bbf7d0;
-    border-radius:8px; color:#16a34a; font-size:12px; font-weight:500; margin-bottom:16px; }
+interface Modulo {
+  id: number;
+  codigo: string;
+  nombre: string;
+}
 
-  /* Modal */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5);
-    display:flex; align-items:center; justify-content:center; z-index:1000; }
-  .modal-box { background:white; border-radius:16px; padding:32px; width:420px;
-    box-shadow:0 20px 60px rgba(0,0,0,0.2); }
-  .modal-title { font-size:17px; font-weight:600; color:#1f2937; margin-bottom:20px; }
-  .modal-field { margin-bottom:16px; }
-  .modal-label { display:block; font-size:11px; font-weight:500; color:#6b7280;
-    letter-spacing:0.04em; text-transform:uppercase; margin-bottom:6px; }
-  .modal-input { width:100%; padding:9px 12px; border:1px solid #e5e7eb;
-    border-radius:8px; font-size:13px; color:#1f2937; outline:none;
-    font-family:'DM Sans',sans-serif; transition:border-color 0.2s; }
-  .modal-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
-  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:24px; }
-  .btn-cancelar { padding:9px 16px; background:#f3f4f6; border:none; border-radius:8px;
-    color:#374151; font-size:13px; font-weight:500; cursor:pointer; }
-  .btn-cancelar:hover { background:#e5e7eb; }
-  .btn-guardar { padding:9px 20px; background:linear-gradient(135deg,#16a34a,#22c55e);
-    border:none; border-radius:8px; color:white; font-size:13px; font-weight:600; cursor:pointer; }
-  .btn-guardar:hover { opacity:0.9; }
+interface PermisoCatalogo {
+  id: number;
+  modulo_id: number;
+  accion: string;
+  modulos?: Modulo;
+}
+
+interface RolPermisoRow {
+  id: number;
+  permiso_id: number;
+}
+
+const ACCIONES = ['ver', 'crear', 'editar', 'eliminar', 'aprobar'];
+
+const styles = `
+  .rol-wrap { padding: 0; }
+  .rol-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .rol-title { font-size:20px; font-weight:600; color:#1f2937; }
+  .rol-title span { font-size:13px; font-weight:400; color:#9ca3af; margin-left:8px; }
+  .btn-nuevo { display:flex; align-items:center; gap:8px; padding:10px 18px; background:linear-gradient(135deg,#16a34a,#22c55e); border:none; border-radius:10px; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn-nuevo:hover { opacity:0.92; }
+  .msg-ok { padding:10px 14px; background:#dcfce7; border:1px solid #bbf7d0; border-radius:8px; color:#166534; font-size:12px; margin-bottom:12px; }
+  .msg-err { padding:10px 14px; background:#fee2e2; border:1px solid #fecaca; border-radius:8px; color:#991b1b; font-size:12px; margin-bottom:12px; }
+
+  .rol-layout { display:grid; grid-template-columns: 360px 1fr; gap:16px; align-items:start; }
+  .rol-panel, .perm-panel { background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+  .rol-panel-head, .perm-panel-head { padding:14px 16px; border-bottom:1px solid #f3f4f6; }
+  .perm-head-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .rol-panel-title, .perm-panel-title { font-size:13px; font-weight:600; color:#111827; }
+  .rol-panel-sub, .perm-panel-sub { font-size:12px; color:#6b7280; margin-top:2px; }
+  .perm-head-actions { display:flex; gap:8px; }
+  .btn-mass { padding:7px 10px; border-radius:8px; border:1px solid; font-size:11px; font-weight:600; cursor:pointer; }
+  .btn-mass.add { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
+  .btn-mass.add:hover { background:#bbf7d0; }
+  .btn-mass.del { background:#fee2e2; border-color:#fecaca; color:#991b1b; }
+  .btn-mass.del:hover { background:#fecaca; }
+  .btn-mass:disabled { opacity:0.6; cursor:not-allowed; }
+
+  .rol-list { padding:8px; display:flex; flex-direction:column; gap:8px; max-height:620px; overflow:auto; }
+  .rol-card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; transition:border-color 0.15s, background 0.15s; cursor:pointer; }
+  .rol-card:hover { border-color:#86efac; background:#f0fdf4; }
+  .rol-card.sel { border-color:#22c55e; background:#dcfce7; }
+  .rol-card-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .rol-name { font-size:14px; font-weight:600; color:#111827; }
+  .rol-desc { font-size:12px; color:#6b7280; margin-top:4px; }
+  .rol-chip { font-size:11px; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+  .rol-actions { display:flex; gap:6px; margin-top:8px; }
+  .btn-edit, .btn-del { padding:5px 10px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid; }
+  .btn-edit { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+  .btn-edit:hover { background:#dbeafe; }
+  .btn-del { background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
+  .btn-del:hover { background:#fee2e2; }
+
+  .perm-wrap { padding:12px 16px 16px; }
+  .perm-table { width:100%; border-collapse:collapse; }
+  .perm-table th { text-align:left; font-size:11px; color:#6b7280; letter-spacing:0.04em; text-transform:uppercase; border-bottom:1px solid #e5e7eb; padding:8px 6px; }
+  .perm-table td { border-bottom:1px solid #f3f4f6; padding:8px 6px; font-size:13px; color:#374151; }
+  .perm-table tr:last-child td { border-bottom:none; }
+  .perm-modulo { font-weight:600; color:#111827; }
+  .perm-codigo { font-size:11px; color:#6b7280; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .perm-check { width:16px; height:16px; cursor:pointer; accent-color:#16a34a; }
+  .perm-empty { padding:24px; color:#9ca3af; font-size:13px; text-align:center; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .modal-box { width:420px; background:#fff; border-radius:14px; padding:22px; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+  .modal-title { font-size:16px; font-weight:600; color:#111827; margin-bottom:16px; }
+  .modal-field { margin-bottom:12px; }
+  .modal-label { display:block; margin-bottom:6px; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:#6b7280; font-weight:600; }
+  .modal-input { width:100%; padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; outline:none; }
+  .modal-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.12); }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+  .btn-cancelar, .btn-guardar { border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; padding:9px 16px; }
+  .btn-cancelar { background:#f3f4f6; color:#374151; }
+  .btn-guardar { background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; }
 `;
 
-const iconos = ['🔑', '👤', '👑', '🛡️', '⚙️', '📋', '🔒', '🌟'];
+interface ListaRolesProps {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
 
-export default function ListaRoles() {
+export default function ListaRoles({
+  canCreate = true,
+  canEdit = true,
+  canDelete = true
+}: ListaRolesProps) {
   const [roles, setRoles] = useState<Rol[]>([]);
   const [usuariosPorRol, setUsuariosPorRol] = useState<Record<number, number>>({});
-  const [exito, setExito] = useState('');
+  const [rolSeleccionado, setRolSeleccionado] = useState<Rol | null>(null);
+  const [catalogoPermisos, setCatalogoPermisos] = useState<PermisoCatalogo[]>([]);
+  const [permisosRol, setPermisosRol] = useState<RolPermisoRow[]>([]);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [ok, setOk] = useState('');
+  const [err, setErr] = useState('');
+
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState<Rol | null>(null);
   const [form, setForm] = useState({ nombre: '', descripcion: '' });
 
-  const cargar = async () => {
-    const { data } = await supabase.from('roles').select('*').order('nombre');
-    if (data) {
-      setRoles(data);
-      // Contar usuarios por rol
-      const conteos: Record<number, number> = {};
-      for (const rol of data) {
-        const { count } = await supabase
-          .from('usuarios_empresas')
-          .select('*', { count: 'exact', head: true })
-          .eq('rol_id', rol.id);
-        conteos[rol.id] = count || 0;
-      }
-      setUsuariosPorRol(conteos);
-    }
+  const showOk = (text: string) => {
+    setOk(text);
+    setTimeout(() => setOk(''), 2600);
   };
 
-  useEffect(() => { cargar(); }, []);
+  const showErr = (text: string) => {
+    setErr(text);
+    setTimeout(() => setErr(''), 3500);
+  };
 
-  const mostrarExito = (msg: string) => {
-    setExito(msg); setTimeout(() => setExito(''), 3000);
+  const cargarRoles = async () => {
+    const { data, error } = await supabase.from('roles').select('*').order('nombre');
+    if (error) {
+      showErr(error.message);
+      return;
+    }
+    const lista = (data || []) as Rol[];
+    setRoles(lista);
+
+    const conteos: Record<number, number> = {};
+    for (const rol of lista) {
+      const { count } = await supabase
+        .from('usuarios_empresas')
+        .select('*', { count: 'exact', head: true })
+        .eq('rol_id', rol.id)
+        .eq('activo', true);
+      conteos[rol.id] = count || 0;
+    }
+    setUsuariosPorRol(conteos);
+
+    setRolSeleccionado(prev => {
+      if (!prev && lista.length > 0) return lista[0];
+      if (!prev) return null;
+      return lista.find(r => r.id === prev.id) || (lista[0] || null);
+    });
+  };
+
+  const cargarCatalogoPermisos = async () => {
+    const { data, error } = await supabase
+      .from('permisos')
+      .select('id,modulo_id,accion,modulos:modulo_id(id,codigo,nombre)')
+      .order('modulo_id')
+      .order('accion');
+    if (error) {
+      showErr('No se pudo cargar el catalogo de permisos. Verifica migracion 001.');
+      return;
+    }
+    setCatalogoPermisos((data || []) as unknown as PermisoCatalogo[]);
+  };
+
+  const cargarPermisosRol = async (rolId: number) => {
+    const { data, error } = await supabase
+      .from('roles_permisos')
+      .select('id,permiso_id')
+      .eq('rol_id', rolId);
+    if (error) {
+      showErr(error.message);
+      return;
+    }
+    setPermisosRol((data || []) as RolPermisoRow[]);
+  };
+
+  useEffect(() => {
+    cargarRoles();
+    cargarCatalogoPermisos();
+  }, []);
+
+  useEffect(() => {
+    if (rolSeleccionado) {
+      cargarPermisosRol(rolSeleccionado.id);
+    } else {
+      setPermisosRol([]);
+    }
+  }, [rolSeleccionado?.id]);
+
+  const permisosRolSet = useMemo(() => {
+    return new Set(permisosRol.map(p => p.permiso_id));
+  }, [permisosRol]);
+
+  const modulosOrdenados = useMemo(() => {
+    const map = new Map<number, Modulo>();
+    for (const p of catalogoPermisos) {
+      if (p.modulos?.id && !map.has(p.modulos.id)) {
+        map.set(p.modulos.id, p.modulos);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [catalogoPermisos]);
+
+  const permisoIdByModuloAccion = (moduloId: number, accion: string): number | null => {
+    const row = catalogoPermisos.find(p => p.modulo_id === moduloId && p.accion === accion);
+    return row?.id ?? null;
+  };
+
+  const togglePermiso = async (moduloId: number, accion: string, checked: boolean) => {
+    if (!canEdit) return;
+    if (!rolSeleccionado) return;
+    const permisoId = permisoIdByModuloAccion(moduloId, accion);
+    if (!permisoId) return;
+
+    const key = `${rolSeleccionado.id}:${moduloId}:${accion}`;
+    setSavingKey(key);
+    setErr('');
+
+    if (checked) {
+      const { error } = await supabase
+        .from('roles_permisos')
+        .insert({ rol_id: rolSeleccionado.id, permiso_id: permisoId });
+      if (error && !String(error.message).toLowerCase().includes('duplicate')) {
+        showErr(error.message);
+      } else {
+        setPermisosRol(prev => (prev.some(p => p.permiso_id === permisoId) ? prev : [...prev, { id: 0, permiso_id: permisoId }]));
+      }
+    } else {
+      const { error } = await supabase
+        .from('roles_permisos')
+        .delete()
+        .eq('rol_id', rolSeleccionado.id)
+        .eq('permiso_id', permisoId);
+      if (error) {
+        showErr(error.message);
+      } else {
+        setPermisosRol(prev => prev.filter(p => p.permiso_id !== permisoId));
+      }
+    }
+    setSavingKey(null);
+  };
+
+  const marcarTodos = async () => {
+    if (!canEdit) return;
+    if (!rolSeleccionado || bulkBusy) return;
+    setBulkBusy(true);
+    setErr('');
+
+    const todosPermisosIds = catalogoPermisos.map(p => p.id);
+    const faltantes = todosPermisosIds.filter(id => !permisosRolSet.has(id));
+
+    if (faltantes.length === 0) {
+      showOk('El rol ya tiene todos los permisos');
+      setBulkBusy(false);
+      return;
+    }
+
+    const payload = faltantes.map(permisoId => ({
+      rol_id: rolSeleccionado.id,
+      permiso_id: permisoId,
+    }));
+
+    const { error } = await supabase.from('roles_permisos').insert(payload);
+
+    if (error) {
+      showErr(error.message);
+      setBulkBusy(false);
+      return;
+    }
+
+    await cargarPermisosRol(rolSeleccionado.id);
+    showOk('Todos los permisos fueron asignados');
+    setBulkBusy(false);
+  };
+
+  const quitarTodos = async () => {
+    if (!canEdit) return;
+    if (!rolSeleccionado || bulkBusy) return;
+    setBulkBusy(true);
+    setErr('');
+
+    const { error } = await supabase
+      .from('roles_permisos')
+      .delete()
+      .eq('rol_id', rolSeleccionado.id);
+
+    if (error) {
+      showErr(error.message);
+      setBulkBusy(false);
+      return;
+    }
+
+    setPermisosRol([]);
+    showOk('Todos los permisos fueron removidos');
+    setBulkBusy(false);
   };
 
   const abrirNuevo = () => {
+    if (!canCreate) return;
     setEditando(null);
     setForm({ nombre: '', descripcion: '' });
     setModal(true);
   };
 
   const abrirEditar = (rol: Rol) => {
+    if (!canEdit) return;
     setEditando(rol);
     setForm({ nombre: rol.nombre, descripcion: rol.descripcion || '' });
     setModal(true);
   };
 
-  const guardar = async () => {
-    if (!form.nombre) return;
+  const guardarRol = async () => {
+    if (editando && !canEdit) return;
+    if (!editando && !canCreate) return;
+    if (!form.nombre.trim()) return;
     if (editando) {
-      await supabase.from('roles').update(form).eq('id', editando.id);
-      mostrarExito('Rol actualizado correctamente');
+      const { error } = await supabase
+        .from('roles')
+        .update({ nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null })
+        .eq('id', editando.id);
+      if (error) return showErr(error.message);
+      showOk('Rol actualizado');
     } else {
-      await supabase.from('roles').insert(form);
-      mostrarExito('Rol creado correctamente');
+      const { error } = await supabase
+        .from('roles')
+        .insert({ nombre: form.nombre.trim(), descripcion: form.descripcion.trim() || null });
+      if (error) return showErr(error.message);
+      showOk('Rol creado');
     }
     setModal(false);
-    cargar();
+    await cargarRoles();
   };
 
-  const eliminar = async (rol: Rol) => {
-    const { count } = await supabase
-      .from('usuarios_empresas')
-      .select('*', { count: 'exact', head: true })
-      .eq('rol_id', rol.id);
-    if (count && count > 0) {
-      alert('⚠️ Este rol está asignado a usuarios. No se puede eliminar.');
+  const eliminarRol = async (rol: Rol) => {
+    if (!canDelete) return;
+    const count = usuariosPorRol[rol.id] || 0;
+    if (count > 0) {
+      showErr('Este rol tiene usuarios asignados y no se puede eliminar');
       return;
     }
-    await supabase.from('roles').delete().eq('id', rol.id);
-    mostrarExito('Rol eliminado');
-    cargar();
+    await supabase.from('roles_permisos').delete().eq('rol_id', rol.id);
+    const { error } = await supabase.from('roles').delete().eq('id', rol.id);
+    if (error) return showErr(error.message);
+    showOk('Rol eliminado');
+    await cargarRoles();
   };
 
   return (
@@ -138,30 +353,123 @@ export default function ListaRoles() {
       <div className="rol-wrap">
         <div className="rol-header">
           <div className="rol-title">
-            Roles <span>{roles.length} registros</span>
+            Roles y Permisos <span>{roles.length} roles</span>
           </div>
-          <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Rol</button>
+          {canCreate && (
+            <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Rol</button>
+          )}
         </div>
 
-        {exito && <div className="success-msg">{exito}</div>}
+        {ok && <div className="msg-ok">{ok}</div>}
+        {err && <div className="msg-err">{err}</div>}
 
-        <div className="rol-grid">
-          {roles.map((rol, i) => (
-            <div key={rol.id} className="rol-card">
-              <div className="rol-card-header">
-                <div className="rol-icon">{iconos[i % iconos.length]}</div>
-                <div className="rol-actions">
-                  <button className="btn-edit" onClick={() => abrirEditar(rol)}>Editar</button>
-                  <button className="btn-del" onClick={() => eliminar(rol)}>Eliminar</button>
+        <div className="rol-layout">
+          <section className="rol-panel">
+            <div className="rol-panel-head">
+              <div className="rol-panel-title">Roles</div>
+              <div className="rol-panel-sub">Selecciona un rol para editar permisos</div>
+            </div>
+            <div className="rol-list">
+              {roles.map(rol => (
+                <article
+                  key={rol.id}
+                  className={`rol-card ${rolSeleccionado?.id === rol.id ? 'sel' : ''}`}
+                  onClick={() => setRolSeleccionado(rol)}
+                >
+                  <div className="rol-card-row">
+                    <div className="rol-name">{rol.nombre}</div>
+                    <span className="rol-chip">{usuariosPorRol[rol.id] || 0} usuarios</span>
+                  </div>
+                  <div className="rol-desc">{rol.descripcion || 'Sin descripcion'}</div>
+                  <div className="rol-actions" onClick={e => e.stopPropagation()}>
+                    {canEdit && (
+                      <button className="btn-edit" onClick={() => abrirEditar(rol)}>Editar</button>
+                    )}
+                    {canDelete && (
+                      <>
+                        <button className="btn-del" onClick={() => eliminarRol(rol)}>Eliminar</button>
+                      </>
+                    )}
+                  </div>
+                </article>
+              ))}
+              {roles.length === 0 && <div className="perm-empty">No hay roles registrados</div>}
+            </div>
+          </section>
+
+          <section className="perm-panel">
+            <div className="perm-panel-head">
+              <div className="perm-head-row">
+                <div className="perm-panel-title">
+                  Matriz de permisos {rolSeleccionado ? `- ${rolSeleccionado.nombre}` : ''}
+                </div>
+                <div className="perm-head-actions">
+                  <button
+                    className="btn-mass add"
+                    onClick={marcarTodos}
+                    disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                  >
+                    Marcar Todos
+                  </button>
+                  <button
+                    className="btn-mass del"
+                    onClick={quitarTodos}
+                    disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                  >
+                    Quitar Todos
+                  </button>
                 </div>
               </div>
-              <div className="rol-nombre">{rol.nombre}</div>
-              <div className="rol-desc">{rol.descripcion || 'Sin descripción'}</div>
-              <div className="rol-usuarios">
-                👥 {usuariosPorRol[rol.id] || 0} asignaciones
-              </div>
+              <div className="perm-panel-sub">Marca los permisos del rol por modulo y accion</div>
             </div>
-          ))}
+            <div className="perm-wrap">
+              {!rolSeleccionado ? (
+                <div className="perm-empty">Selecciona un rol</div>
+              ) : (
+                <table className="perm-table">
+                  <thead>
+                    <tr>
+                      <th>Modulo</th>
+                      {ACCIONES.map(a => <th key={a}>{a}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modulosOrdenados.map(mod => (
+                      <tr key={mod.id}>
+                        <td>
+                          <div className="perm-modulo">{mod.nombre}</div>
+                          <div className="perm-codigo">{mod.codigo}</div>
+                        </td>
+                        {ACCIONES.map(accion => {
+                          const permisoId = permisoIdByModuloAccion(mod.id, accion);
+                          const checked = permisoId ? permisosRolSet.has(permisoId) : false;
+                          const inputKey = `${rolSeleccionado.id}:${mod.id}:${accion}`;
+                          return (
+                            <td key={accion}>
+                              <input
+                                className="perm-check"
+                                type="checkbox"
+                                disabled={!canEdit || !permisoId || savingKey === inputKey}
+                                checked={checked}
+                                onChange={e => togglePermiso(mod.id, accion, e.target.checked)}
+                              />
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {modulosOrdenados.length === 0 && (
+                      <tr>
+                        <td colSpan={1 + ACCIONES.length}>
+                          <div className="perm-empty">No hay catalogo de permisos. Ejecuta migracion 001.</div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
         </div>
       </div>
 
@@ -171,21 +479,25 @@ export default function ListaRoles() {
             <div className="modal-title">{editando ? 'Editar Rol' : 'Nuevo Rol'}</div>
             <div className="modal-field">
               <label className="modal-label">Nombre *</label>
-              <input className="modal-input" value={form.nombre}
+              <input
+                className="modal-input"
+                value={form.nombre}
                 onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                placeholder="Administrador" />
+                placeholder="Administrador"
+              />
             </div>
             <div className="modal-field">
-              <label className="modal-label">Descripción</label>
-              <input className="modal-input" value={form.descripcion}
+              <label className="modal-label">Descripcion</label>
+              <input
+                className="modal-input"
+                value={form.descripcion}
                 onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                placeholder="Acceso total al sistema" />
+                placeholder="Acceso total al sistema"
+              />
             </div>
             <div className="modal-actions">
               <button className="btn-cancelar" onClick={() => setModal(false)}>Cancelar</button>
-              <button className="btn-guardar" onClick={guardar}>
-                {editando ? 'Actualizar' : 'Crear'}
-              </button>
+              <button className="btn-guardar" onClick={guardarRol}>{editando ? 'Actualizar' : 'Crear'}</button>
             </div>
           </div>
         </div>

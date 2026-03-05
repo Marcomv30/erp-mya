@@ -99,13 +99,20 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
     if (data) setCategorias(data);
   };
 
-  useEffect(() => { cargar(); cargarCategorias(); }, [empresaId]);
+  useEffect(() => { cargar(); cargarCategorias(); }, [empresaId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const anular = async (asiento: Asiento) => {
-    if (!window.confirm(`¿Anular el asiento ${asiento.numero_formato}?`)) return;
-    await supabase.from('asientos').update({ estado: 'ANULADO' }).eq('id', asiento.id);
-    cargar();
-  };
+    const anular = async (asiento: Asiento) => {
+      if (!window.confirm(`¿Anular el asiento ${asiento.numero_formato}?`)) return;
+      
+      // Revertir saldos primero
+      await supabase.rpc('revertir_saldos_asiento', {
+        p_asiento_id: asiento.id
+      });
+      
+      // Luego anular
+      await supabase.from('asientos').update({ estado: 'ANULADO' }).eq('id', asiento.id);
+      cargar();
+    };
 
   const asientosFiltrados = asientos.filter(a => {
     if (filtroEstado && a.estado !== filtroEstado) return false;

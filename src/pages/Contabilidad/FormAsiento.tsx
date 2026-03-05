@@ -268,80 +268,90 @@ export default function FormAsiento({ empresaId, asiento, onGuardar, onCancelar 
 
   const fmt = (n: number) => n.toLocaleString('es-CR', { minimumFractionDigits: 2 });
 
-  const guardar = async (estado: 'BORRADOR' | 'CONFIRMADO') => {
-    if (!form.categoria_id || !form.fecha || !form.descripcion) {
-      alert('Complete los datos del encabezado'); return;
-    }
-    if (estado === 'CONFIRMADO' && !balanceado) {
-      alert('⚠️ El asiento no está balanceado. Débitos deben ser iguales a Créditos.'); return;
-    }
-    const lineasValidas = lineas.filter(l => l.cuenta_id);
-    if (lineasValidas.length < 2) {
-      alert('Ingrese al menos 2 líneas con cuenta'); return;
-    }
+const guardar = async (estado: 'BORRADOR' | 'CONFIRMADO') => {
+  if (!form.categoria_id || !form.fecha || !form.descripcion) {
+    alert('Complete los datos del encabezado'); return;
+  }
+  if (estado === 'CONFIRMADO' && !balanceado) {
+    alert('⚠️ El asiento no está balanceado. Débitos deben ser iguales a Créditos.'); return;
+  }
+  const lineasValidas = lineas.filter(l => l.cuenta_id);
+  if (lineasValidas.length < 2) {
+    alert('Ingrese al menos 2 líneas con cuenta'); return;
+  }
 
-    setGuardando(true);
-    const anio = new Date(form.fecha).getFullYear();
+  setGuardando(true);
+  const anio = new Date(form.fecha).getFullYear();
 
-    // Guardar asiento
-    const datosAsiento = {
-      empresa_id: empresaId,
-      categoria_id: parseInt(String(form.categoria_id)),
-      fecha: form.fecha,
-      descripcion: form.descripcion.toUpperCase(),
-      moneda: form.moneda,
-      tipo_cambio: Number(form.tipo_cambio),
-      estado,
-      numero_formato: numeroFormato,
-      numero: 0,
-    };
-
-    const { data: asientoGuardado, error } = await supabase
-      .from('asientos').insert(datosAsiento).select().single();
-
-    if (error || !asientoGuardado) {
-      alert('Error: ' + error?.message); setGuardando(false); return;
-    }
-
-    // Guardar líneas
-    await supabase.from('asiento_lineas').insert(
-      lineasValidas.map((l, i) => ({
-        asiento_id: asientoGuardado.id,
-        linea: i + 1,
-        cuenta_id: l.cuenta_id,
-        descripcion: l.descripcion,
-        debito_crc: Number(l.debito_crc) || 0,
-        credito_crc: Number(l.credito_crc) || 0,
-        debito_usd: Number(l.debito_usd) || 0,
-        credito_usd: Number(l.credito_usd) || 0,
-      }))
-    );
-
-    // Actualizar numeración
-    if (estado === 'CONFIRMADO') {
-      const { data: numData } = await supabase
-        .from('asiento_numeracion').select('*')
-        .eq('empresa_id', empresaId)
-        .eq('categoria_id', form.categoria_id)
-        .eq('anio', anio).single();
-
-      if (numData) {
-        await supabase.from('asiento_numeracion')
-          .update({ ultimo_numero: numData.ultimo_numero + 1 })
-          .eq('id', numData.id);
-      } else {
-        await supabase.from('asiento_numeracion').insert({
-          empresa_id: empresaId,
-          categoria_id: form.categoria_id,
-          anio, ultimo_numero: 1,
-        });
-      }
-    }
-
-    setGuardando(false);
-    setExito(`Asiento ${estado === 'BORRADOR' ? 'guardado como borrador' : 'confirmado'} correctamente`);
-    setTimeout(() => onGuardar(), 1500);
+  // Guardar asiento
+  const datosAsiento = {
+    empresa_id: empresaId,
+    categoria_id: parseInt(String(form.categoria_id)),
+    fecha: form.fecha,
+    descripcion: form.descripcion.toUpperCase(),
+    moneda: form.moneda,
+    tipo_cambio: Number(form.tipo_cambio),
+    estado,
+    numero_formato: numeroFormato,
   };
+
+  const { data: asientoGuardado, error } = await supabase
+    .from('asientos').insert(datosAsiento).select().single();
+
+  if (error || !asientoGuardado) {
+    alert('Error: ' + error?.message); setGuardando(false); return;
+  }
+
+  // Guardar líneas PRIMERO
+  await supabase.from('asiento_lineas').insert(
+    lineasValidas.map((l, i) => ({
+      asiento_id: asientoGuardado.id,
+      linea: i + 1,
+      cuenta_id: l.cuenta_id,
+      descripcion: l.descripcion,
+      debito_crc: Number(l.debito_crc) || 0,
+      credito_crc: Number(l.credito_crc) || 0,
+      debito_usd: Number(l.debito_usd) || 0,
+      credito_usd: Number(l.credito_usd) || 0,
+    }))
+  );
+
+  // DESPUÉS actualizar saldos
+  if (estado === 'CONFIRMADO') {
+    const { error: rpcError } = await supabase.rpc('actualizar_saldos_asiento', {
+      p_asiento_id: asientoGuardado.id
+    });
+    if (rpcError) {
+      console.error('Error saldos:', rpcError);
+      alert('Asiento guardado pero error en saldos: ' + rpcError.message);
+    }
+  }
+
+  // Actualizar numeración
+  if (estado === 'CONFIRMADO') {
+    const { data: numData } = await supabase
+      .from('asiento_numeracion').select('*')
+      .eq('empresa_id', empresaId)
+      .eq('categoria_id', form.categoria_id)
+      .eq('anio', anio).single();
+
+    if (numData) {
+      await supabase.from('asiento_numeracion')
+        .update({ ultimo_numero: numData.ultimo_numero + 1 })
+        .eq('id', numData.id);
+    } else {
+      await supabase.from('asiento_numeracion').insert({
+        empresa_id: empresaId,
+        categoria_id: form.categoria_id,
+        anio, ultimo_numero: 1,
+      });
+    }
+  }
+
+  setGuardando(false);
+  setExito(`Asiento ${estado === 'BORRADOR' ? 'guardado como borrador' : 'confirmado'} correctamente`);
+  setTimeout(() => onGuardar(), 1500);
+};
 
   return (
     <>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 
 interface Actividad {
@@ -49,7 +49,7 @@ const styles = `
     border-radius:6px; color:#dc2626; font-size:11px; font-weight:500; cursor:pointer; }
   .btn-del:hover { background:#dc2626; color:white; }
 
-  /* Panel módulos */
+  /* Panel modulos */
   .modulos-panel { background:white; border-radius:14px; border:1px solid #e5e7eb;
     padding:24px; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
   .modulos-panel-title { font-size:13px; font-weight:600; color:#1f2937; margin-bottom:4px; }
@@ -96,6 +96,10 @@ const styles = `
   .btn-guardar:hover { opacity:0.9; }
   .success-msg { padding:10px 14px; background:#dcfce7; border:1px solid #bbf7d0;
     border-radius:8px; color:#16a34a; font-size:12px; font-weight:500; margin-bottom:16px; }
+  .info-msg { padding:10px 14px; background:#e0f2fe; border:1px solid #bae6fd;
+    border-radius:8px; color:#075985; font-size:12px; font-weight:500; margin-bottom:12px; }
+  .error-msg { padding:10px 14px; background:#fef2f2; border:1px solid #fecaca;
+    border-radius:8px; color:#b91c1c; font-size:12px; font-weight:500; margin-bottom:12px; }
 `;
 
 export default function ListaActividades() {
@@ -105,6 +109,7 @@ export default function ListaActividades() {
   const [modulosSeleccionados, setModulosSeleccionados] = useState<number[]>([]);
   const [guardandoMods, setGuardandoMods] = useState(false);
   const [exito, setExito] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState<Actividad | null>(null);
   const [form, setForm] = useState({ codigo: '', descripcion: '', activo: true });
@@ -131,6 +136,7 @@ export default function ListaActividades() {
     setSeleccionada(act);
     cargarModulosActividad(act.id);
     setExito('');
+    setErrorMsg('');
   };
 
   const toggleModulo = (moduloId: number) => {
@@ -141,16 +147,32 @@ export default function ListaActividades() {
 
   const guardarModulos = async () => {
     if (!seleccionada) return;
+    setErrorMsg('');
     setGuardandoMods(true);
-    await supabase.from('actividad_modulos').delete().eq('actividad_id', seleccionada.id);
-    if (modulosSeleccionados.length > 0) {
-      await supabase.from('actividad_modulos').insert(
-        modulosSeleccionados.map(modulo_id => ({ actividad_id: seleccionada.id, modulo_id }))
-      );
+    try {
+      const { error: errDelete } = await supabase
+        .from('actividad_modulos')
+        .delete()
+        .eq('actividad_id', seleccionada.id);
+
+      if (errDelete) throw errDelete;
+
+      if (modulosSeleccionados.length > 0) {
+        const { error: errInsert } = await supabase
+          .from('actividad_modulos')
+          .insert(modulosSeleccionados.map(modulo_id => ({ actividad_id: seleccionada.id, modulo_id })));
+
+        if (errInsert) throw errInsert;
+      }
+
+      await cargarModulosActividad(seleccionada.id);
+      setExito(`Modulos guardados para ${seleccionada.descripcion}`);
+      setTimeout(() => setExito(''), 3000);
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'No se pudieron guardar los modulos de la actividad');
+    } finally {
+      setGuardandoMods(false);
     }
-    setGuardandoMods(false);
-    setExito(`Módulos guardados para ${seleccionada.descripcion}`);
-    setTimeout(() => setExito(''), 3000);
   };
 
   const abrirNuevo = () => {
@@ -179,7 +201,7 @@ export default function ListaActividades() {
   const eliminar = async (act: Actividad) => {
     const { data } = await supabase.from('empresas').select('id').eq('actividad_id', act.id);
     if (data && data.length > 0) {
-      alert('⚠️ Esta actividad está asignada a empresas. No se puede eliminar.');
+      alert('Esta actividad esta asignada a empresas. No se puede eliminar.');
       return;
     }
     await supabase.from('actividad_modulos').delete().eq('actividad_id', act.id);
@@ -200,7 +222,11 @@ export default function ListaActividades() {
           <button className="btn-nuevo" onClick={abrirNuevo}>+ Nueva Actividad</button>
         </div>
 
+        <div className="info-msg">
+          Aqui se define que modulos hereda cada actividad. Esto impacta la visibilidad en Empresas y menu del usuario.
+        </div>
         {exito && <div className="success-msg">✓ {exito}</div>}
+        {errorMsg && <div className="error-msg">⚠ {errorMsg}</div>}
 
         <div className="act-layout">
           {/* Tabla actividades */}
@@ -208,8 +234,8 @@ export default function ListaActividades() {
             <table className="act-table">
               <thead>
                 <tr>
-                  <th>Código</th>
-                  <th>Descripción</th>
+                  <th>Codigo</th>
+                  <th>Descripcion</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -242,19 +268,19 @@ export default function ListaActividades() {
             </table>
           </div>
 
-          {/* Panel módulos */}
+          {/* Panel modulos */}
           <div className="modulos-panel">
             {!seleccionada ? (
               <div className="panel-empty">
-                👆 Seleccione una actividad para asignar sus módulos
+                Seleccione una actividad para asignar sus modulos
               </div>
             ) : (
               <>
                 <div className="modulos-panel-title">
-                  Módulos para: {seleccionada.descripcion}
+                  Modulos para: {seleccionada.descripcion}
                 </div>
                 <div className="modulos-panel-sub">
-                  Seleccione los módulos que tendrá acceso esta actividad
+                  Seleccione los modulos que tendra acceso esta actividad
                 </div>
                 <div className="modulos-grid-check">
                   {modulos.map(mod => (
@@ -269,7 +295,7 @@ export default function ListaActividades() {
                   ))}
                 </div>
                 <button className="btn-guardar-mods" onClick={guardarModulos} disabled={guardandoMods}>
-                  {guardandoMods ? 'Guardando...' : '💾 Guardar Módulos'}
+                  {guardandoMods ? 'Guardando...' : 'Guardar Modulos'}
                 </button>
               </>
             )}
@@ -285,13 +311,13 @@ export default function ListaActividades() {
               {editando ? 'Editar Actividad' : 'Nueva Actividad'}
             </div>
             <div className="modal-field">
-              <label className="modal-label">Código *</label>
+              <label className="modal-label">Codigo *</label>
               <input className="modal-input" value={form.codigo} maxLength={10}
                 onChange={e => setForm(p => ({ ...p, codigo: e.target.value.toUpperCase() }))}
                 placeholder="AGR" />
             </div>
             <div className="modal-field">
-              <label className="modal-label">Descripción *</label>
+              <label className="modal-label">Descripcion *</label>
               <input className="modal-input" value={form.descripcion}
                 onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
                 placeholder="Agricultura" />
