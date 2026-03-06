@@ -57,6 +57,9 @@ const styles = `
   .usr-table tr:last-child td { border-bottom:none; }
   .usr-table tr:hover td { background:#f9fafb; cursor:pointer; }
   .usr-table tr.selected td { background:#dcfce7; }
+  .usr-mobile-list { display:none; }
+  .usr-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .usr-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .usr-avatar { width:32px; height:32px; border-radius:8px;
     background:linear-gradient(135deg,#16a34a,#22c55e);
     display:inline-flex; align-items:center; justify-content:center;
@@ -131,6 +134,23 @@ const styles = `
     font-weight:600; cursor:pointer; }
   .btn-guardar:hover { opacity:0.9; }
   .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  @media (max-width: 980px) {
+    .usr-layout { grid-template-columns:1fr; }
+    .emp-agregar { grid-template-columns:1fr; }
+    .btn-agregar { width:100%; }
+  }
+
+  @media (max-width: 620px) {
+    .usr-header { flex-wrap:wrap; gap:10px; }
+    .btn-nuevo { width:100%; justify-content:center; }
+    .usr-table-wrap { display:none; }
+    .usr-mobile-list { display:block; }
+    .modal-box { width:92vw; padding:20px; border-radius:12px; }
+    .modal-grid { grid-template-columns:1fr; gap:8px; }
+    .modal-actions { flex-direction:column; }
+    .btn-cancelar, .btn-guardar { width:100%; }
+  }
 `;
 
 export default function ListaUsuarios({ canCreate = true, canEdit = true, canDelete = true }: ListaUsuariosProps) {
@@ -377,7 +397,7 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
         {exito && <div className="success-msg">{exito}</div>}
 
         <div className="usr-layout">
-          <div className="usr-table-wrap">
+          <div className="usr-table-wrap rv-desktop-table">
             <table className="usr-table">
               <thead>
                 <tr>
@@ -436,6 +456,46 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="usr-mobile-list rv-mobile-cards">
+            {usuarios.length === 0 ? (
+              <div className="panel-empty">No hay usuarios registrados</div>
+            ) : usuarios.map((usr) => (
+              <div
+                key={`m-${usr.id}`}
+                className="usr-card"
+                style={seleccionado?.id === usr.id ? { borderColor: '#22c55e', background: '#f0fdf4' } : undefined}
+                onClick={() => seleccionar(usr)}
+              >
+                <div className="usr-card-head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="usr-avatar">{usr.nombre[0]?.toUpperCase()}</div>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>{usr.username}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>{usr.nombre}</div>
+                    </div>
+                  </div>
+                  <span className={`usr-badge ${usr.activo ? 'activo' : 'inactivo'}`}>
+                    {usr.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {usr.es_superusuario ? <span className="usr-badge super">Super Usuario</span> : null}
+                  <span className={`usr-badge ${usr.auth_user_id ? 'activo' : 'inactivo'}`}>
+                    {usr.auth_user_id ? 'Vinculado' : 'Pendiente'}
+                  </span>
+                </div>
+                <div className="usr-actions" onClick={(e) => e.stopPropagation()}>
+                  {canEdit && (
+                    <>
+                      <button className="btn-edit" onClick={() => abrirEditar(usr)}>Editar</button>
+                      <button className="btn-reset" onClick={() => abrirReset(usr)}>Reset clave</button>
+                    </>
+                  )}
+                  {canDelete && <button className="btn-del" onClick={() => eliminar(usr)}>Eliminar</button>}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="emp-panel">

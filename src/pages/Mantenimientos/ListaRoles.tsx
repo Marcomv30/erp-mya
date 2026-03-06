@@ -67,12 +67,26 @@ const styles = `
   .btn-del:hover { background:#fee2e2; }
 
   .perm-wrap { padding:12px 16px 16px; }
+  .perm-mobile-list { display:none; }
+  .perm-card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; margin-bottom:8px; background:#fff; }
+  .perm-card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px; }
+  .perm-card-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .perm-card-item { display:flex; align-items:center; gap:6px; }
+  .perm-card-item label { font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; min-width:56px; }
   .perm-table { width:100%; border-collapse:collapse; }
   .perm-table th { text-align:left; font-size:11px; color:#6b7280; letter-spacing:0.04em; text-transform:uppercase; border-bottom:1px solid #e5e7eb; padding:8px 6px; }
   .perm-table td { border-bottom:1px solid #f3f4f6; padding:8px 6px; font-size:13px; color:#374151; }
   .perm-table tr:last-child td { border-bottom:none; }
   .perm-modulo { font-weight:600; color:#111827; }
   .perm-codigo { font-size:11px; color:#6b7280; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .perm-row-actions { display:flex; gap:6px; align-items:center; justify-content:flex-start; }
+  .btn-row { width:26px; height:24px; padding:0; border-radius:6px; border:1px solid;
+    font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .btn-row.add { background:#ecfdf3; border-color:#bbf7d0; color:#166534; }
+  .btn-row.add:hover { background:#dcfce7; }
+  .btn-row.del { background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
+  .btn-row.del:hover { background:#ffe4e6; }
+  .btn-row:disabled { opacity:0.6; cursor:not-allowed; }
   .perm-check { width:16px; height:16px; cursor:pointer; accent-color:#16a34a; }
   .perm-empty { padding:24px; color:#9ca3af; font-size:13px; text-align:center; }
 
@@ -87,6 +101,26 @@ const styles = `
   .btn-cancelar, .btn-guardar { border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; padding:9px 16px; }
   .btn-cancelar { background:#f3f4f6; color:#374151; }
   .btn-guardar { background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; }
+
+  @media (max-width: 980px) {
+    .rol-layout { grid-template-columns:1fr; }
+    .rol-list { max-height:unset; }
+    .perm-wrap { overflow-x:auto; }
+    .perm-table { min-width:760px; }
+  }
+
+  @media (max-width: 620px) {
+    .rol-header { flex-wrap:wrap; gap:10px; }
+    .btn-nuevo { width:100%; justify-content:center; }
+    .perm-head-row { flex-direction:column; align-items:flex-start; }
+    .perm-head-actions { width:100%; }
+    .btn-mass { flex:1; }
+    .perm-table { display:none; }
+    .perm-mobile-list { display:block; }
+    .modal-box { width:92vw; padding:20px; border-radius:12px; }
+    .modal-actions { flex-direction:column; }
+    .btn-cancelar, .btn-guardar { width:100%; }
+  }
 `;
 
 interface ListaRolesProps {
@@ -297,6 +331,65 @@ export default function ListaRoles({
     setBulkBusy(false);
   };
 
+  const marcarFila = async (moduloId: number) => {
+    if (!canEdit || !rolSeleccionado || bulkBusy) return;
+    setBulkBusy(true);
+    setErr('');
+
+    const permisosModulo = catalogoPermisos.filter((p) => p.modulo_id === moduloId);
+    const faltantes = permisosModulo.filter((p) => !permisosRolSet.has(p.id));
+    if (faltantes.length === 0) {
+      showOk('La fila ya esta marcada');
+      setBulkBusy(false);
+      return;
+    }
+
+    const payload = faltantes.map((p) => ({
+      rol_id: rolSeleccionado.id,
+      permiso_id: p.id,
+    }));
+
+    const { error } = await supabase.from('roles_permisos').insert(payload);
+    if (error) {
+      showErr(error.message);
+      setBulkBusy(false);
+      return;
+    }
+
+    await cargarPermisosRol(rolSeleccionado.id);
+    setBulkBusy(false);
+  };
+
+  const quitarFila = async (moduloId: number) => {
+    if (!canEdit || !rolSeleccionado || bulkBusy) return;
+    setBulkBusy(true);
+    setErr('');
+
+    const permisosModuloIds = catalogoPermisos
+      .filter((p) => p.modulo_id === moduloId)
+      .map((p) => p.id);
+
+    if (permisosModuloIds.length === 0) {
+      setBulkBusy(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('roles_permisos')
+      .delete()
+      .eq('rol_id', rolSeleccionado.id)
+      .in('permiso_id', permisosModuloIds);
+
+    if (error) {
+      showErr(error.message);
+      setBulkBusy(false);
+      return;
+    }
+
+    await cargarPermisosRol(rolSeleccionado.id);
+    setBulkBusy(false);
+  };
+
   const abrirNuevo = () => {
     if (!canCreate) return;
     setEditando(null);
@@ -426,47 +519,107 @@ export default function ListaRoles({
               {!rolSeleccionado ? (
                 <div className="perm-empty">Selecciona un rol</div>
               ) : (
-                <table className="perm-table">
-                  <thead>
-                    <tr>
-                      <th>Modulo</th>
-                      {ACCIONES.map(a => <th key={a}>{a}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modulosOrdenados.map(mod => (
-                      <tr key={mod.id}>
-                        <td>
-                          <div className="perm-modulo">{mod.nombre}</div>
-                          <div className="perm-codigo">{mod.codigo}</div>
-                        </td>
-                        {ACCIONES.map(accion => {
-                          const permisoId = permisoIdByModuloAccion(mod.id, accion);
-                          const checked = permisoId ? permisosRolSet.has(permisoId) : false;
-                          const inputKey = `${rolSeleccionado.id}:${mod.id}:${accion}`;
-                          return (
-                            <td key={accion}>
-                              <input
-                                className="perm-check"
-                                type="checkbox"
-                                disabled={!canEdit || !permisoId || savingKey === inputKey}
-                                checked={checked}
-                                onChange={e => togglePermiso(mod.id, accion, e.target.checked)}
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                    {modulosOrdenados.length === 0 && (
+                <>
+                  <table className="perm-table rv-desktop-table">
+                    <thead>
                       <tr>
-                        <td colSpan={1 + ACCIONES.length}>
-                          <div className="perm-empty">No hay catalogo de permisos. Ejecuta migracion 001.</div>
-                        </td>
+                        <th>Modulo</th>
+                        {ACCIONES.map(a => <th key={a}>{a}</th>)}
+                        <th>Acciones</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {modulosOrdenados.map(mod => (
+                        <tr key={mod.id}>
+                          <td>
+                            <div className="perm-modulo">{mod.nombre}</div>
+                            <div className="perm-codigo">{mod.codigo}</div>
+                          </td>
+                          {ACCIONES.map(accion => {
+                            const permisoId = permisoIdByModuloAccion(mod.id, accion);
+                            const checked = permisoId ? permisosRolSet.has(permisoId) : false;
+                            const inputKey = `${rolSeleccionado.id}:${mod.id}:${accion}`;
+                            return (
+                              <td key={accion}>
+                                <input
+                                  className="perm-check"
+                                  type="checkbox"
+                                  disabled={!canEdit || !permisoId || savingKey === inputKey}
+                                  checked={checked}
+                                  onChange={e => togglePermiso(mod.id, accion, e.target.checked)}
+                                />
+                              </td>
+                            );
+                          })}
+                          <td>
+                            <div className="perm-row-actions">
+                              <button
+                                className="btn-row add"
+                                disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                                onClick={() => marcarFila(mod.id)}
+                                title="Marcar toda la fila"
+                              >
+                                +
+                              </button>
+                              <button
+                                className="btn-row del"
+                                disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                                onClick={() => quitarFila(mod.id)}
+                                title="Quitar toda la fila"
+                              >
+                                -
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {modulosOrdenados.length === 0 && (
+                        <tr>
+                          <td colSpan={2 + ACCIONES.length}>
+                            <div className="perm-empty">No hay catalogo de permisos. Ejecuta migracion 001.</div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="perm-mobile-list rv-mobile-cards">
+                    {modulosOrdenados.length === 0 ? (
+                      <div className="perm-empty">No hay catalogo de permisos. Ejecuta migracion 001.</div>
+                    ) : modulosOrdenados.map((mod) => (
+                      <div key={`m-${mod.id}`} className="perm-card">
+                        <div className="perm-card-head">
+                          <div>
+                            <div className="perm-modulo">{mod.nombre}</div>
+                            <div className="perm-codigo">{mod.codigo}</div>
+                          </div>
+                          <div className="perm-row-actions">
+                            <button className="btn-row add" disabled={!canEdit || !rolSeleccionado || bulkBusy} onClick={() => marcarFila(mod.id)}>+</button>
+                            <button className="btn-row del" disabled={!canEdit || !rolSeleccionado || bulkBusy} onClick={() => quitarFila(mod.id)}>-</button>
+                          </div>
+                        </div>
+                        <div className="perm-card-grid">
+                          {ACCIONES.map((accion) => {
+                            const permisoId = permisoIdByModuloAccion(mod.id, accion);
+                            const checked = permisoId ? permisosRolSet.has(permisoId) : false;
+                            const inputKey = `${rolSeleccionado.id}:${mod.id}:${accion}`;
+                            return (
+                              <div key={accion} className="perm-card-item">
+                                <label>{accion}</label>
+                                <input
+                                  className="perm-check"
+                                  type="checkbox"
+                                  disabled={!canEdit || !permisoId || savingKey === inputKey}
+                                  checked={checked}
+                                  onChange={(e) => togglePermiso(mod.id, accion, e.target.checked)}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </section>

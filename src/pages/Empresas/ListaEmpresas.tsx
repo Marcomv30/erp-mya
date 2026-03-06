@@ -60,6 +60,9 @@ const styles = `
   .emp-table tr:last-child td { border-bottom:none; }
   .emp-table tr:hover td { background:#f9fafb; }
   .emp-table tr.selected td { background:#dcfce7; }
+  .emp-mobile-list { display:none; }
+  .emp-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .emp-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .emp-codigo { font-family:'DM Mono',monospace; font-weight:500; color:#16a34a; }
   .emp-cedula { font-family:'DM Mono',monospace; font-size:12px; color:#6b7280; }
   .emp-badge { display:inline-flex; align-items:center; padding:3px 8px;
@@ -108,6 +111,21 @@ const styles = `
   .btn-confirmar { padding:9px 16px; background:#dc2626; border:none; border-radius:8px;
     color:white; font-size:13px; font-weight:500; cursor:pointer; }
   .btn-confirmar:hover { background:#b91c1c; }
+
+  @media (max-width: 980px) {
+    .emp-layout { grid-template-columns:1fr; }
+  }
+
+  @media (max-width: 620px) {
+    .emp-header { flex-wrap:wrap; gap:10px; }
+    .btn-nuevo { width:100%; justify-content:center; }
+    .emp-table-wrap { display:none; }
+    .emp-mobile-list { display:block; }
+    .emp-modulos-grid { grid-template-columns:1fr; }
+    .confirm-box { width:92vw; padding:20px; border-radius:12px; }
+    .confirm-actions { flex-direction:column; }
+    .btn-cancel, .btn-confirmar { width:100%; }
+  }
 `;
 
 export default function ListaEmpresas() {
@@ -233,7 +251,7 @@ export default function ListaEmpresas() {
         </div>
 
         <div className="emp-layout">
-          <div className="emp-table-wrap">
+          <div className="emp-table-wrap rv-desktop-table">
             <table className="emp-table">
               <thead>
                 <tr>
@@ -277,6 +295,35 @@ export default function ListaEmpresas() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="emp-mobile-list rv-mobile-cards">
+            {cargando ? (
+              <div className="emp-loading">Cargando empresas...</div>
+            ) : empresas.length === 0 ? (
+              <div className="emp-empty">No hay empresas registradas</div>
+            ) : (
+              empresas.map((emp) => (
+                <div
+                  key={`m-${emp.id}`}
+                  className="emp-card"
+                  style={seleccionada?.id === emp.id ? { borderColor: '#22c55e', background: '#f0fdf4' } : undefined}
+                  onClick={() => seleccionarEmpresa(emp)}
+                >
+                  <div className="emp-card-head">
+                    <span className="emp-codigo">{emp.codigo}</span>
+                    <span className={`emp-badge ${emp.activo ? 'activo' : 'inactivo'}`}>{emp.activo ? 'Activo' : 'Inactivo'}</span>
+                  </div>
+                  <div style={{ fontWeight: 700, color: '#1f2937', marginBottom: '6px' }}>{emp.nombre}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Cedula: <span className="emp-cedula">{emp.cedula}</span></div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Actividad: {emp.actividad || '-'}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>{emp.telefono || '-'} · {emp.email || '-'}</div>
+                  <div className="emp-actions" onClick={(e) => e.stopPropagation()}>
+                    <button className="btn-edit" onClick={() => { setEmpresaEditar(emp); setVista('editar'); }}>Editar</button>
+                    <button className="btn-del" onClick={() => setConfirmarEliminar(emp)}>Eliminar</button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="emp-panel">

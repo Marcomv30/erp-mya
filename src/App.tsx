@@ -12,6 +12,8 @@ import PlanCuentas from './pages/Contabilidad/PlanCuentas';
 import ListaAsientos from './pages/Contabilidad/ListaAsientos';
 import CatalogoEmpresa from './pages/Contabilidad/CatalogoEmpresa';
 import MayorGeneral from './pages/Contabilidad/MayorGeneral';
+import TiposAsiento from './pages/Contabilidad/TiposAsiento';
+import ReporteAsientosTipo from './pages/Contabilidad/ReporteAsientosTipo';
 
 interface Empresa {
   id: number;
@@ -87,6 +89,8 @@ const MENU_CONFIG: MenuModuleConfig[] = [
       { id: 'mayorgeneral', nombre: 'Mayor General', icono: '📚', route: 'contabilidad.mayorgeneral', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'balancecomprobacion', nombre: 'Balance Comprobación', icono: '⚖️', route: 'contabilidad.balancecomprobacion', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'catalogo', nombre: 'Catálogo Contable', icono: '📂', route: 'contabilidad.catalogo', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'tiposasiento', nombre: 'Tipos de Asiento', icono: '🏷️', route: 'contabilidad.tiposasiento', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'reporteasientostipo', nombre: 'Reporte por Tipo', icono: '📑', route: 'contabilidad.reporteasientostipo', permission: { modulo: 'contabilidad', accion: 'ver' } },
     ],
   },
   { nombre: 'Bancos', icono: '🏛️', id: 'bancos', route: 'bancos', permission: { modulo: 'bancos', accion: 'ver' }, submenus: [] },
@@ -237,25 +241,60 @@ const styles = `
     --sidebar-w:   84px;
     --navbar-h:    86px;
   }
-  .login-wrap { min-height:100vh; display:flex; background:var(--bg-dark); position:relative; overflow:hidden; }
-  .login-deco { position:absolute; inset:0; background: radial-gradient(ellipse 60% 60% at 70% 50%, rgba(34,197,94,0.10) 0%, transparent 70%), repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(34,197,94,0.04) 40px); }
-  .login-panel { position:relative; z-index:1; margin:auto; width:420px; background:rgba(255,255,255,0.03); border:1px solid rgba(34,197,94,0.18); border-radius:20px; padding:48px 40px; backdrop-filter:blur(12px); }
-  .login-logo { width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:22px; font-weight:500; color:white; margin-bottom:20px; box-shadow:0 0 32px rgba(34,197,94,0.3); }
-  .login-title { font-size:26px; font-weight:600; color:white; letter-spacing:-0.5px; }
-  .login-sub { font-size:13px; color:var(--gray-400); margin-top:4px; margin-bottom:32px; }
-  .field-label { display:block; font-size:12px; font-weight:500; color:var(--gray-400); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px; }
-  .field-input { width:100%; padding:11px 14px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.10); border-radius:10px; color:white; font-size:14px; font-family:'DM Sans',sans-serif; outline:none; transition:border-color 0.2s,box-shadow 0.2s; margin-bottom:18px; }
-  .field-input:focus { border-color:var(--green-main); box-shadow:0 0 0 3px rgba(34,197,94,0.15); }
-  .field-input option { background:#1a2e1a; color:white; }
-  .field-hint { font-size:11px; color:var(--gray-400); font-family:'DM Mono',monospace; margin-top:-14px; margin-bottom:18px; }
-  .btn-login { width:100%; padding:13px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); border:none; border-radius:10px; color:white; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:opacity 0.2s,transform 0.1s; margin-top:6px; }
+  .login-wrap { min-height:100vh; display:grid; grid-template-columns:1.25fr 460px; background:#0f172a; }
+  .login-showcase { position:relative; overflow:hidden; display:flex; align-items:flex-end; padding:48px; }
+  .login-slide-layer {
+    position:absolute; inset:0;
+    background-size:cover; background-position:center center; background-repeat:no-repeat;
+    filter:saturate(1.2) contrast(1.08) brightness(1.08);
+    opacity:0; transform:scale(1.02);
+    transition:opacity 0.9s ease, transform 1.6s ease;
+  }
+  .login-slide-layer.active { opacity:1; transform:scale(1.0); }
+  .login-deco {
+    position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(140deg, rgba(15,23,42,0.10) 0%, rgba(2,132,199,0.22) 48%, rgba(15,23,42,0.36) 100%),
+      radial-gradient(circle at 72% 24%, rgba(56,189,248,0.22), transparent 52%),
+      radial-gradient(circle at 20% 78%, rgba(34,197,94,0.20), transparent 52%);
+    box-shadow: inset 0 -120px 190px rgba(2, 6, 23, 0.40);
+  }
+  .login-brand { position:relative; z-index:1; max-width:640px; color:#f8fafc; }
+  .login-badge { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.08); font-size:11px; letter-spacing:0.06em; text-transform:uppercase; }
+  .login-hero-title { margin-top:16px; font-size:42px; line-height:1.05; letter-spacing:-0.04em; font-weight:600; }
+  .login-hero-sub { margin-top:12px; font-size:15px; color:#cbd5e1; max-width:560px; }
+  .login-hero-chip { margin-top:24px; display:inline-flex; align-items:center; gap:10px; border-radius:999px; padding:10px 16px;
+    border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.10); font-family:'DM Mono',monospace; font-size:13px; }
+  .login-dots { margin-top:20px; display:flex; gap:8px; }
+  .login-dot { width:10px; height:10px; border-radius:999px; border:none; background:rgba(255,255,255,0.35); cursor:pointer; }
+  .login-dot.active { background:#38bdf8; width:24px; }
+
+  .login-panel-wrap { display:flex; align-items:center; justify-content:center; padding:28px; background:#e2e8f0; }
+  .login-panel { width:100%; max-width:420px; background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:34px 28px;
+    box-shadow:0 18px 45px rgba(15,23,42,0.16); }
+  .login-logo { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:white; margin-bottom:14px; }
+  .login-title { font-size:25px; font-weight:700; color:#0f172a; letter-spacing:-0.02em; }
+  .login-sub { font-size:13px; color:#64748b; margin-top:4px; margin-bottom:24px; }
+  .field-label { display:block; font-size:11px; font-weight:600; color:#64748b; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px; }
+  .field-input { width:100%; padding:11px 13px; background:#f8fafc; border:1px solid #dbe1ea; border-radius:10px; color:#0f172a; font-size:14px; font-family:'DM Sans',sans-serif; outline:none; transition:border-color 0.2s,box-shadow 0.2s; margin-bottom:14px; }
+  .field-input:focus { border-color:#38bdf8; box-shadow:0 0 0 3px rgba(56,189,248,0.18); }
+  .field-input option { background:#ffffff; color:#0f172a; }
+  .field-hint { font-size:11px; color:#64748b; font-family:'DM Mono',monospace; margin-top:-10px; margin-bottom:14px; }
+  .btn-login { width:100%; padding:12px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); border:none; border-radius:10px; color:white; font-size:14px; font-weight:600; font-family:'DM Sans',sans-serif; cursor:pointer; transition:opacity 0.2s,transform 0.1s; margin-top:6px; }
   .btn-login:hover { opacity:0.92; }
   .btn-login:active { transform:scale(0.98); }
   .btn-login:disabled { opacity:0.6; cursor:not-allowed; }
-  .login-error { font-size:12px; color:#f87171; text-align:center; margin-bottom:12px; }
-  .login-footer { font-size:11px; color:rgba(255,255,255,0.2); text-align:center; margin-top:28px; font-family:'DM Mono',monospace; }
+  .login-error { font-size:12px; color:#dc2626; text-align:center; margin:4px 0 10px; }
+  .login-footer { font-size:11px; color:#94a3b8; text-align:center; margin-top:24px; font-family:'DM Mono',monospace; }
   .app-shell { min-height:100vh; display:grid; grid-template-rows:var(--navbar-h) 1fr; grid-template-columns:var(--sidebar-w) 1fr; grid-template-areas:"sidebar navbar" "sidebar main"; background:var(--gray-100); }
   .navbar { grid-area:navbar; background:var(--bg-dark); display:flex; align-items:flex-start; padding:10px 24px 8px; gap:16px; border-bottom:1px solid rgba(34,197,94,0.12); }
+  .navbar-menu-btn {
+    display:none; width:36px; height:36px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1);
+    color:#fff; font-size:18px; line-height:1; cursor:pointer;
+    align-items:center; justify-content:center; flex-shrink:0;
+  }
   .navbar-company { flex:1; }
   .navbar-company-name { font-size:14px; font-weight:600; color:white; }
   .navbar-company-sub { font-size:11px; color:var(--green-main); font-family:'DM Mono',monospace; }
@@ -265,6 +304,36 @@ const styles = `
   .navbar-company-switch:focus { border-color:var(--green-main); box-shadow:0 0 0 3px rgba(34,197,94,0.15); }
   .navbar-company-switch option { background:#1a2e1a; color:#fff; }
   .navbar-right { display:flex; align-items:center; gap:20px; margin-top:2px; }
+  .navbar-tools { position:relative; }
+  .navbar-tool-btn {
+    width:40px; height:40px; border-radius:50%; border:1px solid rgba(255,255,255,0.24);
+    background:rgba(255,255,255,0.12); color:#fff; font-size:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:all 0.18s ease;
+    box-shadow:0 6px 14px rgba(2,6,23,0.18);
+  }
+  .navbar-tool-btn:hover { background:rgba(255,255,255,0.22); transform:translateY(-1px); }
+  .navbar-tool-btn.active { background:rgba(255,255,255,0.26); border-color:rgba(255,255,255,0.4); }
+  .navbar-dropdown {
+    position:absolute; top:50px; right:0; width:350px; max-height:64vh; overflow:auto; z-index:40;
+    background:#fff; border:1px solid #dbe1ea; border-radius:0; box-shadow:0 24px 45px rgba(2,6,23,0.20);
+  }
+  .navbar-dropdown-head {
+    position:sticky; top:0; z-index:2;
+    padding:14px 16px; border-bottom:1px solid #e5e7eb; font-size:22px; color:#64748b; text-align:center;
+    background:#f8fafc;
+  }
+  .navbar-dropdown-item {
+    width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border:none;
+    border-bottom:1px solid #e5e7eb; background:#fff; color:#1f3b63; cursor:pointer; text-align:left;
+    font-size:15px; font-weight:500;
+  }
+  .navbar-dropdown-item:last-child { border-bottom:none; }
+  .navbar-dropdown-item:hover { background:#f8fafc; }
+  .navbar-dropdown-icon { width:22px; text-align:center; color:#64748b; font-size:17px; }
+  .navbar-dropdown::-webkit-scrollbar { width:8px; }
+  .navbar-dropdown::-webkit-scrollbar-track { background:#f1f5f9; border-radius:999px; }
+  .navbar-dropdown::-webkit-scrollbar-thumb { background:#94a3b8; border-radius:999px; }
+  .navbar-dropdown::-webkit-scrollbar-thumb:hover { background:#64748b; }
   .navbar-badge { font-size:11px; font-family:'DM Mono',monospace; color:var(--gray-400); }
   .navbar-badge span { color:var(--green-main); font-weight:500; }
   .navbar-clock { font-size:13px; font-family:'DM Mono',monospace; color:white; font-weight:500; background:rgba(34,197,94,0.10); padding:4px 10px; border-radius:6px; border:1px solid rgba(34,197,94,0.2); }
@@ -301,6 +370,9 @@ const styles = `
   .sidebar-exit-label { font-size:12px; color:#fca5a5; font-weight:500; white-space:nowrap; opacity:0; transform:translateX(-8px); transition:opacity 0.16s ease, transform 0.16s ease; }
   .sidebar:hover .sidebar-exit-label { opacity:1; transform:translateX(0); }
   .main-content { grid-area:main; padding:28px 32px; overflow-y:auto; }
+  .sidebar-backdrop {
+    display:none; position:fixed; inset:0; z-index:50; background:rgba(2,6,23,0.45);
+  }
   .section-title { font-size:11px; font-weight:600; color:var(--gray-400); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px; }
   .favoritos-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-bottom:32px; }
   .fav-card { background:white; border:1px solid var(--gray-200); border-radius:16px; padding:24px 16px; display:flex; flex-direction:column; align-items:center; gap:12px; cursor:pointer; transition:all 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
@@ -325,13 +397,83 @@ const styles = `
   .welcome-bar-cia { font-size:11px; font-family:'DM Mono',monospace; color:var(--green-main); background:rgba(34,197,94,0.12); padding:3px 10px; border-radius:6px; display:inline-block; border:1px solid rgba(34,197,94,0.2); }
   .welcome-bar-date { font-size:11px; color:var(--gray-400); margin-top:5px; font-family:'DM Mono',monospace; }
   .loading { display:flex; align-items:center; justify-content:center; min-height:100vh; background:var(--bg-dark); color:var(--green-main); font-family:'DM Mono',monospace; font-size:14px; }
-  .theme-switcher { position:fixed; right:18px; bottom:18px; z-index:40; background:rgba(15,23,42,0.92); border:1px solid rgba(255,255,255,0.14); border-radius:14px; padding:12px; width:220px; backdrop-filter:blur(8px); box-shadow:0 12px 30px rgba(0,0,0,0.25); }
-  .theme-switcher-title { font-size:11px; letter-spacing:0.07em; text-transform:uppercase; color:var(--gray-400); margin-bottom:8px; font-weight:600; }
-  .theme-switcher-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
-  .theme-chip { width:100%; aspect-ratio:1/1; border-radius:8px; border:2px solid transparent; cursor:pointer; transition:transform 0.15s,border-color 0.15s; }
-  .theme-chip:hover { transform:translateY(-2px); }
-  .theme-chip.active { border-color:white; }
-  .theme-switcher-name { margin-top:8px; font-size:12px; color:#fff; text-align:center; font-weight:500; }
+  .theme-switcher-compact { position:fixed; right:16px; bottom:16px; z-index:40; }
+  .theme-compact-btn { border:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border-radius:999px; background:rgba(15,23,42,0.88); color:#fff; box-shadow:0 10px 24px rgba(0,0,0,0.22);
+    border:1px solid rgba(255,255,255,0.12); backdrop-filter:blur(8px); }
+  .theme-compact-dot { width:18px; height:18px; border-radius:999px; border:1px solid rgba(255,255,255,0.5); }
+  .theme-compact-label { font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#cbd5e1; }
+  .theme-compact-btn:hover { transform:translateY(-1px); }
+  @media (max-width: 1100px) {
+    .login-wrap { grid-template-columns:1fr; }
+    .login-showcase { display:none; }
+    .login-panel-wrap { min-height:100vh; padding:16px; }
+    .login-panel { max-width:540px; border-radius:14px; padding:24px 20px; }
+  }
+
+  @media (max-width: 980px) {
+    :root { --navbar-h: 78px; }
+    .app-shell {
+      grid-template-columns:1fr;
+      grid-template-areas:"navbar" "main";
+      grid-template-rows:var(--navbar-h) 1fr;
+    }
+    .navbar {
+      align-items:center;
+      padding:10px 14px;
+      gap:10px;
+      position:sticky;
+      top:0;
+      z-index:55;
+    }
+    .navbar-menu-btn { display:flex; }
+    .navbar-company-name { font-size:13px; }
+    .navbar-company-sub { font-size:10px; }
+    .navbar-company-switch { width:100%; max-width:280px; margin-top:4px; }
+    .navbar-right { gap:8px; margin-top:0; }
+    .navbar-badge, .navbar-clock { display:none; }
+    .navbar-user-meta { display:none; }
+    .navbar-logout { padding:6px 8px; font-size:11px; }
+    .navbar-dropdown { width:min(92vw, 340px); right:0; }
+
+    .sidebar {
+      position:fixed;
+      left:0;
+      top:0;
+      height:100vh;
+      width:260px;
+      transform:translateX(-100%);
+      transition:transform 0.22s ease;
+      z-index:60;
+      box-shadow:8px 0 24px rgba(0,0,0,0.26);
+      overflow-y:auto;
+    }
+    .sidebar.open { transform:translateX(0); }
+    .sidebar:hover { width:260px; box-shadow:8px 0 24px rgba(0,0,0,0.26); }
+    .sidebar .sidebar-logo-label,
+    .sidebar .sidebar-label,
+    .sidebar .sidebar-exit-label {
+      opacity:1;
+      transform:translateX(0);
+    }
+    .sidebar-backdrop.show { display:block; }
+    .main-content { padding:14px 14px 22px; }
+    .welcome-bar { padding:14px; gap:10px; flex-wrap:wrap; }
+    .welcome-bar-right { margin-left:0; text-align:left; width:100%; }
+    .favoritos-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+    .all-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
+  }
+
+  @media (max-width: 620px) {
+    .navbar-company-switch { max-width:100%; }
+    .navbar-user { gap:6px; }
+    .navbar-avatar { width:28px; height:28px; font-size:12px; }
+    .navbar-logout span:last-child { display:none; }
+    .main-content { padding:12px; }
+    .login-panel { padding:20px 16px; }
+    .login-title { font-size:22px; }
+    .field-input { margin-bottom:12px; }
+  }
 `;
 
 function ThemeSwitcher({
@@ -342,25 +484,26 @@ function ThemeSwitcher({
   onChange: (id: string) => void;
 }) {
   const selected = COLOR_PALETTES.find(p => p.id === paletteId) || COLOR_PALETTES[0];
+  const handleCycleTheme = () => {
+    const currentIndex = COLOR_PALETTES.findIndex((p) => p.id === selected.id);
+    const next = COLOR_PALETTES[(currentIndex + 1) % COLOR_PALETTES.length];
+    onChange(next.id);
+  };
 
   return (
-    <div className="theme-switcher">
-      <div className="theme-switcher-title">Paleta de color</div>
-      <div className="theme-switcher-grid">
-        {COLOR_PALETTES.map(palette => (
-          <button
-            key={palette.id}
-            type="button"
-            className={`theme-chip ${palette.id === paletteId ? 'active' : ''}`}
-            title={palette.nombre}
-            onClick={() => onChange(palette.id)}
-            style={{
-              background: `linear-gradient(135deg, ${palette.colors.accentDim}, ${palette.colors.accentMain})`
-            }}
-          />
-        ))}
-      </div>
-      <div className="theme-switcher-name">{selected.nombre}</div>
+    <div className="theme-switcher-compact">
+      <button
+        type="button"
+        className="theme-compact-btn"
+        onClick={handleCycleTheme}
+        title={`Tema actual: ${selected.nombre}. Click para cambiar.`}
+      >
+        <span
+          className="theme-compact-dot"
+          style={{ background: `linear-gradient(135deg, ${selected.colors.accentDim}, ${selected.colors.accentMain})` }}
+        />
+        <span className="theme-compact-label">{selected.nombre}</span>
+      </button>
     </div>
   );
 }
@@ -373,60 +516,118 @@ function Clock() {
   return <span>{time.toLocaleTimeString('es-CR')}</span>;
 }
 
-async function cargarPermisosUsuarioEmpresa(usuarioId: number, empresaId: number): Promise<PermissionKey[]> {
-  const { data: permisosEfectivos, error: errEfectivos } = await supabase.rpc('get_effective_permissions', {
-    p_empresa_id: empresaId,
-  });
+async function cargarPermisosUsuarioEmpresaViaApi(empresaId: number): Promise<PermissionKey[] | null> {
+  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+  const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return null;
 
-  if (!errEfectivos && Array.isArray(permisosEfectivos)) {
-    const permisosSet = new Set<PermissionKey>();
-    permisosEfectivos.forEach((row: any) => {
-      const moduloCodigo = String(row?.modulo_codigo || '').toLowerCase();
-      const accion = String(row?.accion || '').toLowerCase();
-      if (moduloCodigo && accion) {
-        permisosSet.add(`${moduloCodigo}:${accion}`);
-      }
-    });
-    return Array.from(permisosSet);
-  }
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) return null;
 
-  // Fallback para entornos que aun no ejecutan 008.
-  const { data: asignaciones, error: errAsignaciones } = await supabase
-    .from('usuarios_empresas')
-    .select('rol_id')
-    .eq('usuario_id', usuarioId)
-    .eq('empresa_id', empresaId)
-    .eq('activo', true);
-
-  if (errAsignaciones) {
-    throw new Error('No se pudieron cargar los roles del usuario en la empresa seleccionada');
-  }
-
-  const roleIds = Array.from(new Set((asignaciones || []).map((row: any) => row.rol_id).filter(Boolean)));
-  if (roleIds.length === 0) {
-    throw new Error('El usuario no tiene un rol activo en esta empresa');
-  }
-
-  const { data: permisosRaw, error: errPermisos } = await supabase
-    .from('roles_permisos')
-    .select('permisos:permiso_id(accion, modulos:modulo_id(codigo))')
-    .in('rol_id', roleIds);
-
-  if (errPermisos) {
-    throw new Error('No se pudieron cargar los permisos. Ejecute la migración RBAC en Supabase');
-  }
-
-  const permisosSet = new Set<PermissionKey>();
-  (permisosRaw || []).forEach((row: any) => {
-    const permiso = row?.permisos;
-    const accion = String(permiso?.accion || '').toLowerCase();
-    const moduloCodigo = String(permiso?.modulos?.codigo || '').toLowerCase();
-    if (accion && moduloCodigo) {
-      permisosSet.add(`${moduloCodigo}:${accion}`);
+  const response = await fetch(
+    `${supabaseUrl}/functions/v1/access-api/me/access?empresa_id=${empresaId}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
     }
-  });
+  );
 
-  return Array.from(permisosSet);
+  if (!response.ok) return null;
+  const payload = await response.json();
+  if (!payload?.ok || !Array.isArray(payload?.permissions)) return null;
+
+  const normalized = payload.permissions
+    .map((p: unknown) => String(p || '').toLowerCase())
+    .filter((p: string) => p.includes(':')) as PermissionKey[];
+
+  return Array.from(new Set(normalized));
+}
+
+type LoginApiSuccess = {
+  ok: true;
+  usuario: Usuario;
+  session: { access_token: string; refresh_token: string };
+  empresas_autorizadas: Empresa[];
+  roles_por_empresa: Record<string, string> | Record<number, string>;
+};
+
+async function loginViaApi(username: string, password: string): Promise<
+  | { kind: 'success'; data: LoginApiSuccess }
+  | { kind: 'handled_error'; message: string }
+  | { kind: 'unavailable' }
+> {
+  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+  const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return { kind: 'unavailable' };
+
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/access-api/auth/login`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${anonKey}`,
+        apikey: anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = String(payload?.message || payload?.error || 'No se pudo iniciar sesión');
+      return { kind: 'handled_error', message };
+    }
+
+    if (!payload?.ok) {
+      return { kind: 'handled_error', message: 'No se pudo iniciar sesión' };
+    }
+
+    return { kind: 'success', data: payload as LoginApiSuccess };
+  } catch {
+    return { kind: 'unavailable' };
+  }
+}
+
+async function cambiarEmpresaActivaViaApi(empresaId: number): Promise<PermissionKey[] | null> {
+  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+  const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) return null;
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (!accessToken) return null;
+
+  const response = await fetch(
+    `${supabaseUrl}/functions/v1/access-api/auth/switch-company`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ empresa_id: empresaId }),
+    }
+  );
+
+  if (!response.ok) return null;
+  const payload = await response.json();
+  if (!payload?.ok || !Array.isArray(payload?.permissions)) return null;
+
+  const normalized = payload.permissions
+    .map((p: unknown) => String(p || '').toLowerCase())
+    .filter((p: string) => p.includes(':')) as PermissionKey[];
+
+  return Array.from(new Set(normalized));
+}
+
+async function cargarPermisosUsuarioEmpresa(_usuarioId: number, empresaId: number): Promise<PermissionKey[]> {
+  const viaApi = await cargarPermisosUsuarioEmpresaViaApi(empresaId);
+  if (viaApi) return viaApi;
+  throw new Error('No se pudieron cargar permisos desde access-api');
 }
 
 function Login({ onLogin }: {
@@ -438,8 +639,33 @@ function Login({ onLogin }: {
     rolesPorEmpresa: RolesPorEmpresa
   ) => void;
 }) {
+  const LOGIN_HERO_SLIDES = [
+    {
+      title: 'Control total de su operación, empresa por empresa.',
+      subtitle: 'Inicie sesión y seleccione la compañía autorizada para trabajar con permisos precisos por rol, módulo y actividad.',
+      image: `${process.env.PUBLIC_URL}/branding/login-1.jpg`
+    },
+    {
+      title: 'Permisos inteligentes por empresa, rol y módulo.',
+      subtitle: 'Su equipo ve exactamente lo que necesita. Sin menús sobrantes, sin riesgo operativo.',
+      image: `${process.env.PUBLIC_URL}/branding/login-2.jpg`
+    },
+    {
+      title: 'ERP moderno para decisiones claras.',
+      subtitle: 'Rendimiento, trazabilidad y seguridad en un solo flujo de trabajo.',
+      image: `${process.env.PUBLIC_URL}/branding/login-3.jpg`
+    }
+  ];
+
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [faseEmpresa, setFaseEmpresa] = useState(false);
+  const [empresaSeleccionadaId, setEmpresaSeleccionadaId] = useState<number | null>(null);
+  const [pendingAuth, setPendingAuth] = useState<{
+    usuario: Usuario;
+    empresasAutorizadas: Empresa[];
+    rolesPorEmpresa: RolesPorEmpresa;
+  } | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -450,198 +676,187 @@ function Login({ onLogin }: {
       .then(({ data }) => {
         if (data && data.length > 0) {
           setEmpresas(data);
-          setEmpresa(data[0]);
         }
       });
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % LOGIN_HERO_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [LOGIN_HERO_SLIDES.length]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username || !password || !empresa) {
+    if (!username || !password) {
       setError('Complete todos los campos'); return;
     }
     setCargando(true); setError('');
     const usernameKey = username.trim();
 
-    const registrarIntento = async (success: boolean) => {
-      try {
-        await supabase.rpc('register_login_attempt', {
-          p_username: usernameKey,
-          p_success: success,
-          p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        });
-      } catch {
-        // No bloquear login por falla de auditoria/rate-limit
+    const loginApiResult = await loginViaApi(usernameKey, password);
+    if (loginApiResult.kind === 'success') {
+      const { data } = loginApiResult;
+      const { error: setSessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
+      if (setSessionError) {
+        setError('No se pudo establecer la sesión');
+        setCargando(false);
+        return;
       }
-    };
 
-    const { data: lockMsg } = await supabase.rpc('check_login_allowed', {
-      p_username: usernameKey,
-    });
-    if (lockMsg) {
-      setError(String(lockMsg));
+      const rolesPorEmpresa: RolesPorEmpresa = {};
+      Object.entries(data.roles_por_empresa || {}).forEach(([k, v]) => {
+        rolesPorEmpresa[Number(k)] = String(v);
+      });
+
+      const empresasAutorizadas = (data.empresas_autorizadas || []) as Empresa[];
+      if (empresasAutorizadas.length === 1) {
+        const empresaUnica = empresasAutorizadas[0];
+        const permisos = await cargarPermisosUsuarioEmpresa(data.usuario.id, empresaUnica.id);
+        onLogin(data.usuario, empresaUnica, permisos, empresasAutorizadas, rolesPorEmpresa);
+        setCargando(false);
+        return;
+      }
+
+      setPendingAuth({
+        usuario: data.usuario,
+        empresasAutorizadas,
+        rolesPorEmpresa,
+      });
+      setEmpresaSeleccionadaId(empresasAutorizadas[0]?.id ?? null);
+      setFaseEmpresa(true);
+      setPassword('');
       setCargando(false);
       return;
     }
 
-    const { data: usuario, error: errUsuario, count } = await supabase
-      .from('usuarios')
-      .select('*', { count: 'exact' })
-      .ilike('username', usernameKey)
-      .eq('activo', true)
-      .maybeSingle();
-
-    if (errUsuario) {
-      setError('No se pudo validar el usuario');
-      await registrarIntento(false);
+    if (loginApiResult.kind === 'handled_error') {
+      setError(loginApiResult.message);
       setCargando(false);
       return;
     }
+    setError('Servicio de acceso no disponible. Intente nuevamente en unos segundos.');
+    setCargando(false);
+    return;
+  };
 
-    if ((count ?? 0) > 1) {
-      setError('Hay usuarios duplicados con ese username. Corrija en mantenimiento.');
-      await registrarIntento(false);
-      setCargando(false);
-      return;
-    }
-
-    if (!usuario) {
-      setError('Usuario no encontrado o inactivo');
-      await registrarIntento(false);
-      setCargando(false);
-      return;
-    }
-
-    
-    if (!usuario.email) {
-      setError('El usuario no tiene email configurado para iniciar sesión');
-      setCargando(false);
-      return;
-    }
-
-    const { data: authData, error: errAuth } = await supabase.auth.signInWithPassword({
-      email: usuario.email,
-      password,
-    });
-
-    if (errAuth || !authData.user) {
-      setError('Credenciales inválidas');
-      await registrarIntento(false);
-      setCargando(false);
-      return;
-    }
-    // if (errAuth || !authData.user) {
-    //   setError(errAuth?.message || 'Credenciales inválidas');
-    //   setCargando(false);
-    //   return;
-    // }
-
-    
-    if (usuario.auth_user_id && usuario.auth_user_id !== authData.user.id) {
-      setError('El usuario no está vinculado correctamente con Auth');
-      await registrarIntento(false);
-      await supabase.auth.signOut();
-      setCargando(false);
-      return;
-    }
-
-    if (!usuario.auth_user_id) {
-      await supabase
-        .from('usuarios')
-        .update({ auth_user_id: authData.user.id })
-        .eq('id', usuario.id);
-      usuario.auth_user_id = authData.user.id;
-    }
-
+  const confirmarEmpresa = async () => {
+    if (!pendingAuth || !empresaSeleccionadaId) return;
+    setCargando(true);
+    setError('');
     try {
-      const isSuper = Boolean((usuario as any).es_superusuario);
-      let empresasAutorizadas: Empresa[] = [];
-      let rolesPorEmpresa: RolesPorEmpresa = {};
-
-      if (isSuper) {
-        empresasAutorizadas = [...empresas];
-        empresasAutorizadas.forEach((emp) => {
-          rolesPorEmpresa[emp.id] = 'Super Usuario';
-        });
-      } else {
-        const { data: ueRows, error: errUe } = await supabase
-          .from('usuarios_empresas')
-          .select('empresa_id, roles:rol_id(nombre)')
-          .eq('usuario_id', usuario.id)
-          .eq('activo', true);
-
-        if (errUe) {
-          setError('No se pudo cargar empresas autorizadas del usuario');
-          await registrarIntento(false);
-          await supabase.auth.signOut();
-          return;
-        }
-
-        const empresaIds = Array.from(new Set((ueRows || []).map((r: any) => r.empresa_id).filter(Boolean)));
-        empresasAutorizadas = empresas.filter((emp) => empresaIds.includes(emp.id));
-        (ueRows || []).forEach((r: any) => {
-          if (r?.empresa_id) {
-            rolesPorEmpresa[r.empresa_id] = String(r?.roles?.nombre || 'Sin rol');
-          }
-        });
-
-        if (empresasAutorizadas.length === 0) {
-          setError('El usuario no tiene empresas activas asignadas');
-          await registrarIntento(false);
-          await supabase.auth.signOut();
-          return;
-        }
-
-        if (!empresasAutorizadas.some((x) => x.id === empresa.id)) {
-          setError('Seleccione una empresa autorizada para este usuario');
-          await registrarIntento(false);
-          await supabase.auth.signOut();
-          return;
-        }
+      const empresaElegida = pendingAuth.empresasAutorizadas.find((e) => e.id === empresaSeleccionadaId);
+      if (!empresaElegida) {
+        setError('Seleccione una empresa valida');
+        setCargando(false);
+        return;
       }
-
-      const permisos = await cargarPermisosUsuarioEmpresa(usuario.id, empresa.id);
-      await registrarIntento(true);
-      onLogin(usuario as Usuario, empresa, permisos, empresasAutorizadas, rolesPorEmpresa);
-    } catch (e: any) {
-      setError('No se pudo validar permisos del usuario');
-      await registrarIntento(false);
-      await supabase.auth.signOut();
-      return;
+      const permisos = await cargarPermisosUsuarioEmpresa(pendingAuth.usuario.id, empresaElegida.id);
+      onLogin(
+        pendingAuth.usuario,
+        empresaElegida,
+        permisos,
+        pendingAuth.empresasAutorizadas,
+        pendingAuth.rolesPorEmpresa
+      );
+    } catch {
+      setError('No se pudieron cargar permisos para la empresa seleccionada.');
     } finally {
       setCargando(false);
     }
   };
 
+  const volverALogin = async () => {
+    setFaseEmpresa(false);
+    setPendingAuth(null);
+    setEmpresaSeleccionadaId(null);
+    setPassword('');
+    setError('');
+    await supabase.auth.signOut();
+  };
+
   return (
     <div className="login-wrap">
-      <div className="login-deco" />
-      <div className="login-panel">
-        <div className="login-logo">MYA</div>
-        <div className="login-title">Sistemas MYA</div>
-        <div className="login-sub">Morales y Alfaro — Contabilidad Pública y Privada</div>
-        <form onSubmit={handleSubmit}>
-          <label className="field-label">Usuario</label>
-          <input className="field-input" type="text" placeholder="Ingrese su usuario"
-            value={username} onChange={e => setUsername(e.target.value)} />
-          <label className="field-label">Contraseña</label>
-          <input className="field-input" type="password" placeholder="••••••••"
-            value={password} onChange={e => setPassword(e.target.value)} />
-          <label className="field-label">Empresa</label>
-          <select className="field-input" value={empresa?.codigo || ''}
-            onChange={e => setEmpresa(empresas.find(x => x.codigo === e.target.value) || null)}>
-            {empresas.map(emp => (
-              <option key={emp.codigo} value={emp.codigo}>{emp.codigo} — {emp.nombre}</option>
+      <section className="login-showcase">
+        {LOGIN_HERO_SLIDES.map((slide, idx) => (
+          <div
+            key={`${slide.image}-${idx}`}
+            className={`login-slide-layer ${idx === slideIndex ? 'active' : ''}`}
+            style={{ backgroundImage: `url(${slide.image})` }}
+          />
+        ))}
+        <div className="login-deco" />
+        <div className="login-brand">
+          <span className="login-badge">ERP | SISTEMAS MYA</span>
+          <h1 className="login-hero-title">{LOGIN_HERO_SLIDES[slideIndex].title}</h1>
+           <p className="login-hero-sub">{LOGIN_HERO_SLIDES[slideIndex].subtitle}</p>
+          <span className="login-hero-chip">Soporte central | +506 8379 0976</span>
+          <div className="login-dots">
+            {LOGIN_HERO_SLIDES.map((_, idx) => (
+              <button
+                key={`dot-${idx}`}
+                type="button"
+                className={`login-dot ${idx === slideIndex ? 'active' : ''}`}
+                onClick={() => setSlideIndex(idx)}
+                aria-label={`Ir al slide ${idx + 1}`}
+              />
             ))}
-          </select>
-          <div className="field-hint">Cédula: {empresa?.cedula}</div>
-          {error && <div className="login-error">{error}</div>}
-          <button className="btn-login" type="submit" disabled={cargando}>
-            {cargando ? 'Verificando...' : 'Ingresar al Sistema →'}
-          </button>
-        </form>
-        <div className="login-footer">Sistema MYA v3.0 · {new Date().getFullYear()}</div>
-      </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="login-panel-wrap">
+        <div className="login-panel">
+          <div className="login-logo">MYA</div>
+          <div className="login-title">Iniciar Sesión</div>
+          <div className="login-sub">Morales y Alfaro — Contabilidad Pública y Privada</div>
+          {!faseEmpresa ? (
+            <form onSubmit={handleSubmit}>
+              <label className="field-label">Usuario</label>
+              <input className="field-input" type="text" placeholder="Ingrese su usuario"
+                value={username} onChange={e => setUsername(e.target.value)} />
+              <label className="field-label">Contraseña</label>
+              <input className="field-input" type="password" placeholder="••••••••"
+                value={password} onChange={e => setPassword(e.target.value)} />
+              {error && <div className="login-error">{error}</div>}
+              <button className="btn-login" type="submit" disabled={cargando}>
+                {cargando ? 'Verificando...' : 'Continuar →'}
+              </button>
+            </form>
+          ) : (
+            <div>
+              <label className="field-label">Seleccione Empresa</label>
+              <select
+                className="field-input"
+                value={empresaSeleccionadaId ?? ''}
+                onChange={(e) => setEmpresaSeleccionadaId(Number(e.target.value))}
+              >
+                {(pendingAuth?.empresasAutorizadas || []).map((emp) => (
+                  <option key={emp.id} value={emp.id}>{emp.codigo} — {emp.nombre}</option>
+                ))}
+              </select>
+              {error && <div className="login-error">{error}</div>}
+              <button className="btn-login" type="button" disabled={cargando} onClick={confirmarEmpresa}>
+                {cargando ? 'Abriendo...' : 'Abrir Empresa →'}
+              </button>
+              <button
+                className="btn-login"
+                type="button"
+                onClick={volverALogin}
+                style={{ marginTop: '8px', background: '#e2e8f0', color: '#0f172a', border: '1px solid #cbd5e1' }}
+              >
+                ← Volver
+              </button>
+            </div>
+          )}
+          <div className="login-footer">Sistema MYA v3.0 · {new Date().getFullYear()}</div>
+        </div>
+      </section>
+      
     </div>
   );
 }
@@ -657,6 +872,9 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
 }) {
   const [moduloActivo, setModuloActivo] = useState('');
   const [submenu, setSubmenu] = useState('');
+  const [showMaintDropdown, setShowMaintDropdown] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const maintDropdownRef = React.useRef<HTMLDivElement | null>(null);
   const can = (moduloId: string, accion: PermissionAction = 'ver') => (
     permisos.includes(`${moduloId}:${accion}`)
     || (accion !== 'aprobar' && permisos.includes(`${moduloId}:aprobar`))
@@ -668,6 +886,10 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
   };
 
   const modulosPermitidos = MENU_CONFIG.filter(m => canAccess(m.route));
+  const modulosNavegables = modulosPermitidos.filter((m) => m.id !== 'mantenimientos');
+  const moduloMantenimientos = MENU_CONFIG.find((m) => m.id === 'mantenimientos');
+  const puedeVerMantenimientos = Boolean(moduloMantenimientos && canAccess(moduloMantenimientos.route));
+  const submenusMantenimientos = ((moduloMantenimientos?.submenus || []).filter((s) => canAccess(s.route)));
   const moduloActivoConfig = modulosPermitidos.find(m => m.id === moduloActivo);
   const submenusPermitidos = (moduloActivoConfig?.submenus || []).filter(s => canAccess(s.route));
   const submenuActivoLabel = submenusPermitidos.find(s => s.id === submenu)?.nombre || submenu;
@@ -695,7 +917,20 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
   useEffect(() => {
     setModuloActivo('');
     setSubmenu('');
+    setShowMaintDropdown(false);
+    setMobileSidebarOpen(false);
   }, [empresa.id]);
+
+  useEffect(() => {
+    const onDocClick = (ev: MouseEvent) => {
+      if (!maintDropdownRef.current) return;
+      if (!maintDropdownRef.current.contains(ev.target as Node)) {
+        setShowMaintDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   const abrirModulo = (modId: string) => {
     const modulo = modulosPermitidos.find((m) => m.id === modId);
@@ -712,10 +947,11 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
     } else {
       setSubmenu('');
     }
+    if (window.innerWidth <= 980) setMobileSidebarOpen(false);
   };
 
-  const favoritos = modulosPermitidos.filter(m => FAVORITOS_DEFAULT.includes(m.id));
-  const otrosModulos = modulosPermitidos.filter(m => !FAVORITOS_DEFAULT.includes(m.id));
+  const favoritos = modulosNavegables.filter(m => FAVORITOS_DEFAULT.includes(m.id));
+  const otrosModulos = modulosNavegables.filter(m => !FAVORITOS_DEFAULT.includes(m.id));
   const fecha = new Date().toLocaleDateString('es-CR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
@@ -723,12 +959,16 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <div
+        className={`sidebar-backdrop ${mobileSidebarOpen ? 'show' : ''}`}
+        onClick={() => setMobileSidebarOpen(false)}
+      />
+      <aside className={`sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <div className="sidebar-logo-inner">M</div>
           <span className="sidebar-logo-label">Sistemas MYA</span>
         </div>
-        {modulosPermitidos.map((mod, i) => (
+        {modulosNavegables.map((mod, i) => (
           <React.Fragment key={mod.id}>
             {i === 9 && <div className="sidebar-divider" />}
             <div className={`sidebar-item ${moduloActivo === mod.id ? 'active' : ''}`}
@@ -744,6 +984,13 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       </aside>
 
       <nav className="navbar">
+        <button
+          className="navbar-menu-btn"
+          title="Abrir menu"
+          onClick={() => setMobileSidebarOpen((prev) => !prev)}
+        >
+          ☰
+        </button>
         <div className="navbar-company">
           <div className="navbar-company-name">{empresa.nombre}</div>
           <div className="navbar-company-sub">Cédula {empresa.cedula}</div>
@@ -765,6 +1012,36 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
           <div className="navbar-badge">CIA <span>{empresa.codigo}</span></div>
           <div className="navbar-badge">Ver <span>3.0</span></div>
           <div className="navbar-clock"><Clock /></div>
+          {puedeVerMantenimientos && submenusMantenimientos.length > 0 && (
+            <div className="navbar-tools" ref={maintDropdownRef}>
+              <button
+                className={`navbar-tool-btn ${showMaintDropdown ? 'active' : ''}`}
+                title="Mantenimientos"
+                onClick={() => setShowMaintDropdown((prev) => !prev)}
+              >
+                ⚙️
+              </button>
+              {showMaintDropdown && (
+                <div className="navbar-dropdown">
+                  <div className="navbar-dropdown-head">Configuración</div>
+                  {submenusMantenimientos.map((item) => (
+                    <button
+                      key={item.id}
+                      className="navbar-dropdown-item"
+                      onClick={() => {
+                        setModuloActivo('mantenimientos');
+                        setSubmenu(item.id);
+                        setShowMaintDropdown(false);
+                      }}
+                    >
+                      <span className="navbar-dropdown-icon">{item.icono}</span>
+                      <span>{item.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="navbar-user">
             <div className="navbar-avatar">{usuario.username[0]?.toUpperCase()}</div>
             <div className="navbar-user-meta">
@@ -864,20 +1141,28 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       {moduloActivo === 'mantenimientos' && submenu === 'empresas' && canAccess('mantenimientos.empresas') && <ListaEmpresas />}
       {moduloActivo === 'mantenimientos' && submenu === 'actividades' && canAccess('mantenimientos.actividades') && <ListaActividades />}
 
-      {moduloActivo === 'contabilidad' && submenu === 'catalogo' && canAccess('contabilidad.catalogo') && <CatalogoEmpresa empresaId={empresa.id} />}
+      {moduloActivo === 'contabilidad' && submenu === 'catalogo' && canAccess('contabilidad.catalogo') && (
+        <CatalogoEmpresa empresaId={empresa.id} canEdit={can('contabilidad', 'editar')} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'tiposasiento' && canAccess('contabilidad.tiposasiento') && (
+        <TiposAsiento canEdit={can('contabilidad', 'editar')} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'reporteasientostipo' && canAccess('contabilidad.reporteasientostipo') && (
+        <ReporteAsientosTipo empresaId={empresa.id} />
+      )}
       {moduloActivo === 'mantenimientos' && submenu === '' && (
         <div>
           <div className="section-title" style={{ marginBottom: '20px' }}>
             🔧 Mantenimientos
           </div>
           <div className="favoritos-grid">
-            {submenusPermitidos.map(item => (
-              <div key={item.id} className="fav-card" onClick={() => setSubmenu(item.id)}>
-                <div className="fav-icon">{item.icono}</div>
-                <div className="fav-name">{item.nombre}</div>
-                <div className="fav-arrow">Abrir →</div>
-              </div>
-            ))}
+              {submenusPermitidos.map(item => (
+                <div key={item.id} className="fav-card" onClick={() => setSubmenu(item.id)}>
+                  <div className="fav-icon">{item.icono}</div>
+                  <div className="fav-name">{item.nombre}</div>
+                  <div className="fav-arrow">Abrir →</div>
+                </div>
+              ))}
           </div>
         </div>
       )}
@@ -901,7 +1186,7 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
             <div className="welcome-bar-date">{fecha}</div>
           </div>
         </div>
-        {modulosPermitidos.length === 0 ? (
+        {modulosNavegables.length === 0 ? (
           <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '26px', color: '#6b7280', fontSize: '14px' }}>
             No tiene módulos habilitados para esta empresa. Solicite permisos al administrador.
           </div>
@@ -977,7 +1262,11 @@ function App() {
     if (!empresaNueva || empresaNueva.id === sesion.empresa.id) return;
 
     try {
-      const permisos = await cargarPermisosUsuarioEmpresa(sesion.usuario.id, empresaNueva.id);
+      const permisos = await cambiarEmpresaActivaViaApi(empresaNueva.id);
+      if (!permisos) {
+        alert('No se pudieron cargar permisos desde access-api para la empresa seleccionada.');
+        return;
+      }
       setSesion({
         ...sesion,
         empresa: empresaNueva,

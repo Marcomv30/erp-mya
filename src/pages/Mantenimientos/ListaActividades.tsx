@@ -36,6 +36,9 @@ const styles = `
   .act-table tr:last-child td { border-bottom:none; }
   .act-table tr:hover td { background:#f9fafb; cursor:pointer; }
   .act-table tr.selected td { background:#dcfce7; }
+  .act-mobile-list { display:none; }
+  .act-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .act-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .act-codigo { font-family:'DM Mono',monospace; font-weight:500; color:#16a34a; }
   .act-badge { display:inline-flex; align-items:center; padding:3px 8px;
     border-radius:6px; font-size:11px; font-weight:500; }
@@ -100,6 +103,21 @@ const styles = `
     border-radius:8px; color:#075985; font-size:12px; font-weight:500; margin-bottom:12px; }
   .error-msg { padding:10px 14px; background:#fef2f2; border:1px solid #fecaca;
     border-radius:8px; color:#b91c1c; font-size:12px; font-weight:500; margin-bottom:12px; }
+
+  @media (max-width: 980px) {
+    .act-layout { grid-template-columns:1fr; }
+  }
+
+  @media (max-width: 620px) {
+    .act-header { flex-wrap:wrap; gap:10px; }
+    .btn-nuevo { width:100%; justify-content:center; }
+    .modulos-grid-check { grid-template-columns:1fr; }
+    .act-table-wrap { display:none; }
+    .act-mobile-list { display:block; }
+    .modal-box { width:92vw; padding:20px; border-radius:12px; }
+    .modal-actions { flex-direction:column; }
+    .btn-cancelar, .btn-guardar { width:100%; }
+  }
 `;
 
 export default function ListaActividades() {
@@ -230,7 +248,7 @@ export default function ListaActividades() {
 
         <div className="act-layout">
           {/* Tabla actividades */}
-          <div className="act-table-wrap">
+          <div className="act-table-wrap rv-desktop-table">
             <table className="act-table">
               <thead>
                 <tr>
@@ -266,6 +284,32 @@ export default function ListaActividades() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="act-mobile-list rv-mobile-cards">
+            {actividades.length === 0 ? (
+              <div className="panel-empty">No hay actividades. Cree una nueva.</div>
+            ) : actividades.map((act) => (
+              <div
+                key={`m-${act.id}`}
+                className="act-card"
+                style={seleccionada?.id === act.id ? { borderColor: '#22c55e', background: '#f0fdf4' } : undefined}
+                onClick={() => seleccionar(act)}
+              >
+                <div className="act-card-head">
+                  <span className="act-codigo">{act.codigo}</span>
+                  <span className={`act-badge ${act.activo ? 'activo' : 'inactivo'}`}>
+                    {act.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937', marginBottom: '8px' }}>
+                  {act.descripcion}
+                </div>
+                <div className="act-actions" onClick={(e) => e.stopPropagation()}>
+                  <button className="btn-edit" onClick={() => abrirEditar(act)}>Editar</button>
+                  <button className="btn-del" onClick={() => eliminar(act)}>Eliminar</button>
+                </div>
+              </div>
+            ))}
           </div>
 
           {/* Panel modulos */}

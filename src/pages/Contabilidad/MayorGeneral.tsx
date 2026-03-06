@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../supabase';
 
 interface MovimientoMayor {
@@ -66,6 +66,11 @@ const styles = `
     border-bottom:1px solid #f9fafb; }
   .mg-table tr:last-child td { border-bottom:none; }
   .mg-table tr:hover td { background:#fafafa; }
+  .mg-mobile-list { display:none; }
+  .mg-mov-card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; margin-bottom:8px; background:#fff; }
+  .mg-mov-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:6px; }
+  .mg-mov-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px; }
+  .mg-mov-label { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; display:block; }
   .mg-fecha { font-family:'DM Mono',monospace; font-size:11px; color:#6b7280; }
   .mg-asiento { font-family:'DM Mono',monospace; font-size:11px; font-weight:600;
     color:#2563eb; }
@@ -109,6 +114,28 @@ const styles = `
     border-bottom:1px solid #f3f4f6; }
   .cuenta-option:hover { background:#f0fdf4; }
   .cuenta-option-codigo { font-family:'DM Mono',monospace; color:#16a34a; font-weight:600; }
+
+  @media (max-width: 980px) {
+    .mg-filtros { padding:14px; }
+    .mg-filtros-grid { grid-template-columns:1fr 1fr; gap:10px; }
+    .btn-consultar { width:100%; }
+  }
+
+  @media (max-width: 620px) {
+    .mg-title { font-size:18px; }
+    .mg-filtros-grid { grid-template-columns:1fr; }
+    .mg-stats { gap:8px; }
+    .mg-stat { width:100%; }
+    .cuenta-mayor-header {
+      flex-direction:column;
+      align-items:flex-start;
+      gap:6px;
+      padding:12px;
+    }
+    .cuenta-saldo-ant { margin-left:0; }
+    .mg-table { display:none; }
+    .mg-mobile-list { display:block; padding:10px 12px 12px; background:#f8fafc; }
+  }
 `;
 
 const fmt = (n: number) => Math.abs(n).toLocaleString('es-CR', { minimumFractionDigits: 2 });
@@ -123,6 +150,7 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
   const [consultado, setConsultado] = useState(false);
   const [cuentasDropdown, setCuentasDropdown] = useState<any[]>([]);
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
+  const reqRef = useRef(0);
 
   const buscarCuentas = async (q: string) => {
     setBusquedaCuenta(q);
@@ -144,6 +172,7 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
   };
 
   const consultar = async () => {
+    const reqId = ++reqRef.current;
     setCargando(true);
     setConsultado(true);
 
@@ -163,6 +192,7 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
     }
 
     const { data: movimientos } = await query;
+    if (reqId !== reqRef.current) return;
 
     if (!movimientos || movimientos.length === 0) {
       setResultados([]);
@@ -182,6 +212,7 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
           .eq('empresa_id', empresaId)
           .eq('cuenta', mov.cuenta)
           .lt('fecha', fechaInicio);
+        if (reqId !== reqRef.current) return;
 
         let saldoAnterior = 0;
         if (anterior) {
@@ -230,6 +261,15 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
     setResultados(Array.from(cuentasMap.values()));
     setCargando(false);
   };
+
+  useEffect(() => {
+    if (!fechaInicio || !fechaFin) return;
+    if (fechaInicio > fechaFin) return;
+    const t = setTimeout(() => {
+      consultar();
+    }, 450);
+    return () => clearTimeout(t);
+  }, [empresaId, fechaInicio, fechaFin, cuentaFiltro?.codigo]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalDebe = resultados.reduce((s, c) => s + c.total_debe, 0);
   const totalHaber = resultados.reduce((s, c) => s + c.total_haber, 0);
@@ -285,8 +325,8 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
                 )}
               </div>
             </div>
-            <button className="btn-consultar" onClick={consultar} disabled={cargando}>
-              {cargando ? 'Consultando...' : '🔍 Consultar'}
+            <button className="btn-consultar" onClick={consultar} disabled={cargando} title="Actualizar manual">
+              {cargando ? 'Consultando...' : 'Actualizar'}
             </button>
           </div>
         </div>
@@ -339,7 +379,7 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
                     </span>
                   </span>
                 </div>
-                <table className="mg-table">
+                <table className="mg-table rv-desktop-table">
                   <thead>
                     <tr>
                       <th>Fecha</th>
@@ -392,6 +432,66 @@ export default function MayorGeneral({ empresaId }: { empresaId: number }) {
                     </tr>
                   </tbody>
                 </table>
+                <div className="mg-mobile-list rv-mobile-cards">
+                  {cuenta.saldo_anterior !== 0 && (
+                    <div className="mg-mov-card" style={{ background: '#fffbeb' }}>
+                      <div className="mg-mov-head">
+                        <span className="mg-asiento">SALDO ANT.</span>
+                        <span className={`mg-saldo ${cuenta.saldo_anterior < 0 ? 'negativo' : ''}`}>
+                          {cuenta.saldo_anterior < 0 ? '-' : ''}CRC {fmt(cuenta.saldo_anterior)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#d97706' }}>Saldo anterior al periodo</div>
+                    </div>
+                  )}
+
+                  {cuenta.movimientos.map((mov, idx) => (
+                    <div key={`m-${idx}`} className="mg-mov-card">
+                      <div className="mg-mov-head">
+                        <span className="mg-fecha">{mov.fecha}</span>
+                        <span className="mg-asiento">{mov.asiento}</span>
+                      </div>
+                      <div><span className="mg-cat">{mov.categoria}</span></div>
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#374151' }}>{mov.detalle || '-'}</div>
+                      <div className="mg-mov-grid">
+                        <div>
+                          <span className="mg-mov-label">Debe</span>
+                          <span className="mg-debe">{mov.debe > 0 ? `CRC ${fmt(mov.debe)}` : '-'}</span>
+                        </div>
+                        <div>
+                          <span className="mg-mov-label">Haber</span>
+                          <span className="mg-haber">{mov.haber > 0 ? `CRC ${fmt(mov.haber)}` : '-'}</span>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: '6px' }}>
+                        <span className="mg-mov-label">Saldo</span>
+                        <span className={`mg-saldo ${(mov.saldo || 0) < 0 ? 'negativo' : ''}`}>
+                          {(mov.saldo || 0) < 0 ? '-' : ''}CRC {fmt(mov.saldo || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="mg-mov-card mg-totales">
+                    <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>Totales</div>
+                    <div className="mg-mov-grid">
+                      <div>
+                        <span className="mg-mov-label">Debe</span>
+                        <span className="mg-debe">CRC {fmt(cuenta.total_debe)}</span>
+                      </div>
+                      <div>
+                        <span className="mg-mov-label">Haber</span>
+                        <span className="mg-haber">CRC {fmt(cuenta.total_haber)}</span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '6px' }}>
+                      <span className="mg-mov-label">Saldo Final</span>
+                      <span className={`mg-saldo ${cuenta.saldo_final < 0 ? 'negativo' : ''}`}>
+                        {cuenta.saldo_final < 0 ? '-' : ''}CRC {fmt(cuenta.saldo_final)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ))}
           </>

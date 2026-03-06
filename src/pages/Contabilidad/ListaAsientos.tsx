@@ -15,6 +15,30 @@ interface Asiento {
   asiento_categorias: { codigo: string; descripcion: string };
 }
 
+interface CategoriaAsiento {
+  id: number;
+  codigo: string;
+  descripcion: string;
+  tipo_id: number | null;
+}
+
+interface TipoAsiento {
+  id: number;
+  codigo: string;
+  nombre: string;
+  color: string;
+  activo: boolean;
+}
+
+interface ConsolidadoTipo {
+  tipo_id: number;
+  tipo_codigo: string;
+  tipo_nombre: string;
+  cantidad_asientos: number;
+  total_debito_crc: number;
+  total_credito_crc: number;
+}
+
 const styles = `
   .asi-wrap { padding:0; }
   .asi-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
@@ -31,14 +55,20 @@ const styles = `
   .asi-filtro-btn:hover { border-color:#22c55e; color:#16a34a; }
   .asi-filtro-btn.active { background:#dcfce7; border-color:#22c55e; color:#16a34a; }
   .asi-table-wrap { background:white; border-radius:14px; border:1px solid #e5e7eb;
-    overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-  .asi-table { width:100%; border-collapse:collapse; }
+    overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .asi-table { width:100%; min-width:760px; border-collapse:collapse; }
   .asi-table thead { background:#f9fafb; }
   .asi-table th { padding:12px 16px; text-align:left; font-size:11px; font-weight:600;
     color:#6b7280; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid #e5e7eb; }
   .asi-table td { padding:12px 16px; font-size:13px; color:#374151; border-bottom:1px solid #f3f4f6; }
   .asi-table tr:last-child td { border-bottom:none; }
   .asi-table tr:hover td { background:#f9fafb; cursor:pointer; }
+  .asi-mobile-list { display:none; }
+  .asi-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .asi-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .asi-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .asi-card-row { display:flex; flex-direction:column; gap:2px; }
+  .asi-card-label { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; }
   .asi-num { font-family:'DM Mono',monospace; font-weight:600; color:#16a34a; font-size:12px; }
   .asi-fecha { font-family:'DM Mono',monospace; font-size:12px; color:#6b7280; }
   .estado-badge { display:inline-flex; align-items:center; padding:3px 8px;
@@ -68,16 +98,39 @@ const styles = `
   .btn-nuevo:hover { opacity:0.9; }
   .anio-select { padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px;
     font-size:13px; color:#1f2937; outline:none; font-family:'DM Sans',sans-serif; }
+
+  @media (max-width: 900px) {
+    .asi-header { flex-wrap:wrap; gap:10px; }
+    .asi-title { font-size:18px; }
+    .asi-toolbar { gap:8px; }
+    .asi-search { width:100%; }
+    .anio-select { width:100%; }
+    .btn-nuevo { width:100%; }
+    .asi-stats { gap:8px; }
+    .asi-stat { min-width:calc(50% - 4px); padding:10px 12px; }
+  }
+
+  @media (max-width: 620px) {
+    .asi-title span { display:block; margin-left:0; margin-top:2px; }
+    .asi-stat { min-width:100%; }
+    .asi-table-wrap { display:none; }
+    .asi-mobile-list { display:block; }
+    .asi-actions { flex-direction:column; align-items:stretch; }
+    .btn-ver, .btn-anular { width:100%; text-align:center; }
+  }
 `;
 
 export default function ListaAsientos({ empresaId }: { empresaId: number }) {
   const [asientos, setAsientos] = useState<Asiento[]>([]);
-  const [categorias, setCategorias] = useState<any[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaAsiento[]>([]);
+  const [tipos, setTipos] = useState<TipoAsiento[]>([]);
+  const [consolidado, setConsolidado] = useState<ConsolidadoTipo[]>([]);
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState<'lista' | 'nuevo' | 'ver'>('lista');
   const [asientoVer, setAsientoVer] = useState<Asiento | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string | null>(null);
   const [filtroCategoria, setFiltroCategoria] = useState<number | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<number | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [anio, setAnio] = useState(new Date().getFullYear());
 
@@ -95,11 +148,37 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
   };
 
   const cargarCategorias = async () => {
-    const { data } = await supabase.from('asiento_categorias').select('*').eq('activo', true).order('codigo');
-    if (data) setCategorias(data);
+    const { data } = await supabase
+      .from('asiento_categorias')
+      .select('id, codigo, descripcion, tipo_id')
+      .eq('activo', true)
+      .order('codigo');
+    if (data) setCategorias(data as CategoriaAsiento[]);
   };
 
-  useEffect(() => { cargar(); cargarCategorias(); }, [empresaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cargarTipos = async () => {
+    const { data } = await supabase
+      .from('asiento_tipos')
+      .select('id, codigo, nombre, color, activo')
+      .eq('activo', true)
+      .order('orden')
+      .order('codigo');
+    if (data) setTipos(data as TipoAsiento[]);
+  };
+
+  const cargarConsolidado = async (anioTarget: number) => {
+    const fechaDesde = `${anioTarget}-01-01`;
+    const fechaHasta = `${anioTarget}-12-31`;
+    const { data } = await supabase.rpc('reporte_asientos_por_tipo', {
+      p_empresa_id: empresaId,
+      p_fecha_desde: fechaDesde,
+      p_fecha_hasta: fechaHasta,
+    });
+    setConsolidado((data || []) as ConsolidadoTipo[]);
+  };
+
+  useEffect(() => { cargar(); cargarCategorias(); cargarTipos(); }, [empresaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargarConsolidado(anio); }, [empresaId, anio]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const anular = async (asiento: Asiento) => {
       if (!window.confirm(`¿Anular el asiento ${asiento.numero_formato}?`)) return;
@@ -117,6 +196,10 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
   const asientosFiltrados = asientos.filter(a => {
     if (filtroEstado && a.estado !== filtroEstado) return false;
     if (filtroCategoria && a.categoria_id !== filtroCategoria) return false;
+    if (filtroTipo) {
+      const cat = categorias.find((c) => c.id === a.categoria_id);
+      if (!cat || cat.tipo_id !== filtroTipo) return false;
+    }
     if (busqueda) {
       const b = busqueda.toLowerCase();
       return a.numero_formato?.toLowerCase().includes(b) ||
@@ -183,6 +266,34 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
           </div>
         </div>
 
+        <div className="asi-table-wrap" style={{ marginBottom: '14px' }}>
+          <table className="asi-table">
+            <thead>
+              <tr>
+                <th>Consolidado por Tipo ({anio})</th>
+                <th>Asientos</th>
+                <th>Debito CRC</th>
+                <th>Credito CRC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {consolidado.length === 0 ? (
+                <tr><td colSpan={4} className="asi-empty">Sin movimientos confirmados para el año seleccionado</td></tr>
+              ) : consolidado.map((row) => (
+                <tr key={row.tipo_id}>
+                  <td>
+                    <span className="cat-badge">{row.tipo_codigo}</span>
+                    <span style={{ marginLeft: '8px' }}>{row.tipo_nombre}</span>
+                  </td>
+                  <td style={{ fontFamily: 'DM Mono, monospace' }}>{row.cantidad_asientos}</td>
+                  <td style={{ fontFamily: 'DM Mono, monospace' }}>{Number(row.total_debito_crc || 0).toLocaleString('es-CR', { minimumFractionDigits: 2 })}</td>
+                  <td style={{ fontFamily: 'DM Mono, monospace' }}>{Number(row.total_credito_crc || 0).toLocaleString('es-CR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
         {/* Toolbar */}
         <div className="asi-toolbar">
           <input className="asi-search" placeholder="🔍 Buscar número o descripción..."
@@ -206,6 +317,16 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
           </div>
 
           <div className="asi-filtros">
+            {tipos.map(tipo => (
+              <button key={tipo.id}
+                className={`asi-filtro-btn ${filtroTipo === tipo.id ? 'active' : ''}`}
+                onClick={() => setFiltroTipo(filtroTipo === tipo.id ? null : tipo.id)}>
+                {tipo.codigo}
+              </button>
+            ))}
+          </div>
+
+          <div className="asi-filtros">
             {categorias.map(cat => (
               <button key={cat.id}
                 className={`asi-filtro-btn ${filtroCategoria === cat.id ? 'active' : ''}`}
@@ -216,7 +337,7 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabla Desktop */}
         <div className="asi-table-wrap">
           <table className="asi-table">
             <thead>
@@ -270,6 +391,44 @@ export default function ListaAsientos({ empresaId }: { empresaId: number }) {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards Mobile */}
+        <div className="asi-mobile-list">
+          {cargando ? (
+            <div className="asi-empty">Cargando asientos...</div>
+          ) : asientosFiltrados.length === 0 ? (
+            <div className="asi-empty">No hay asientos registrados</div>
+          ) : asientosFiltrados.map((asi) => (
+            <div key={`m-${asi.id}`} className="asi-card" onClick={() => { setAsientoVer(asi); setVista('ver'); }}>
+              <div className="asi-card-head">
+                <span className="asi-num">{asi.numero_formato}</span>
+                <span className={`estado-badge estado-${asi.estado}`}>{asi.estado}</span>
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <span className="cat-badge">{(asi.asiento_categorias as any)?.codigo}</span>
+              </div>
+              <div className="asi-card-grid">
+                <div className="asi-card-row">
+                  <span className="asi-card-label">Fecha</span>
+                  <span className="asi-fecha">{asi.fecha}</span>
+                </div>
+                <div className="asi-card-row">
+                  <span className="asi-card-label">Moneda</span>
+                  <span style={{ fontFamily: 'DM Mono, monospace', fontSize: '12px' }}>
+                    {asi.moneda} {asi.moneda === 'USD' ? `TC: ${asi.tipo_cambio}` : ''}
+                  </span>
+                </div>
+              </div>
+              <div style={{ marginBottom: '10px', fontSize: '13px', color: '#374151' }}>{asi.descripcion}</div>
+              <div className="asi-actions" onClick={(e) => e.stopPropagation()}>
+                <button className="btn-ver" onClick={() => { setAsientoVer(asi); setVista('ver'); }}>Ver</button>
+                {asi.estado !== 'ANULADO' && asi.estado !== 'BORRADOR' && (
+                  <button className="btn-anular" onClick={() => anular(asi)}>Anular</button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>

@@ -29,6 +29,9 @@ const styles = `
   .mod-table td { padding:12px 16px; font-size:13px; color:#374151; border-bottom:1px solid #f3f4f6; }
   .mod-table tr:last-child td { border-bottom:none; }
   .mod-table tr:hover td { background:#f9fafb; }
+  .mod-mobile-list { display:none; }
+  .mod-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .mod-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .mod-codigo { font-family:'DM Mono',monospace; color:#16a34a; font-weight:500; }
   .mod-icono { font-size:18px; }
   .mod-order { font-family:'DM Mono',monospace; color:#6b7280; }
@@ -70,6 +73,17 @@ const styles = `
   .btn-guardar { padding:9px 20px; background:linear-gradient(135deg,#16a34a,#22c55e);
     border:none; border-radius:8px; color:white; font-size:13px; font-weight:600; cursor:pointer; }
   .btn-guardar:hover { opacity:0.9; }
+
+  @media (max-width: 620px) {
+    .mod-header { flex-wrap:wrap; gap:10px; }
+    .btn-nuevo { width:100%; justify-content:center; }
+    .mod-table-wrap { display:none; }
+    .mod-mobile-list { display:block; }
+    .modal-box { width:92vw; padding:20px; border-radius:12px; }
+    .modal-grid { grid-template-columns:1fr; gap:8px; }
+    .modal-actions { flex-direction:column; }
+    .btn-cancelar, .btn-guardar { width:100%; }
+  }
 `;
 
 const iconosBase = ['🧮', '🏛️', '📬', '🧑‍💼', '📦', '🪪', '🏗️', '🗂️', '🧾', '💳', '📈', '📊', '🛠️'];
@@ -195,7 +209,7 @@ export default function ListaModulos({
 
         {exito && <div className="success-msg">{exito}</div>}
 
-        <div className="mod-table-wrap">
+        <div className="mod-table-wrap rv-desktop-table">
           <table className="mod-table">
             <thead>
               <tr>
@@ -239,6 +253,33 @@ export default function ListaModulos({
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mod-mobile-list rv-mobile-cards">
+          {modulos.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+              No hay modulos registrados
+            </div>
+          ) : modulos.map((modulo) => (
+            <div key={`m-${modulo.id}`} className="mod-card">
+              <div className="mod-card-head">
+                <span className="mod-codigo">{modulo.codigo}</span>
+                <span className={`mod-badge ${modulo.activo ? 'activo' : 'inactivo'}`}>
+                  {modulo.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span className="mod-icono">{modulo.icono || '🧩'}</span>
+                <span style={{ fontSize: '14px', fontWeight: 600, color: '#1f2937' }}>{modulo.nombre}</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                Orden: <span className="mod-order">{modulo.orden}</span>
+              </div>
+              <div className="mod-actions">
+                {canEdit && <button className="btn-edit" onClick={() => abrirEditar(modulo)}>Editar</button>}
+                {canDelete && <button className="btn-del" onClick={() => eliminar(modulo)}>Eliminar</button>}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -40,8 +40,8 @@ const styles = `
   .tipo-btn.GASTO { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
   .tipo-btn.inactive { background:#f3f4f6; color:#9ca3af; border-color:#e5e7eb; }
   .pc-table-wrap { background:white; border-radius:14px; border:1px solid #e5e7eb;
-    overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
-  .pc-table { width:100%; border-collapse:collapse; }
+    overflow-x:auto; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+  .pc-table { width:100%; min-width:900px; border-collapse:collapse; }
   .pc-table thead { background:#f9fafb; position:sticky; top:0; z-index:1; }
   .pc-table th { padding:12px 16px; text-align:left; font-size:11px; font-weight:600;
     color:#6b7280; letter-spacing:0.06em; text-transform:uppercase;
@@ -50,6 +50,14 @@ const styles = `
     border-bottom:1px solid #f3f4f6; }
   .pc-table tr:last-child td { border-bottom:none; }
   .pc-table tr:hover td { background:#f9fafb; }
+  .pc-mobile-list { display:none; }
+  .pc-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .pc-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .pc-card-code { font-family:'DM Mono',monospace; font-size:12px; font-weight:600; color:#16a34a; }
+  .pc-card-name { font-size:14px; font-weight:600; color:#1f2937; margin-bottom:8px; }
+  .pc-card-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .pc-card-row { display:flex; flex-direction:column; gap:2px; }
+  .pc-card-label { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; }
   .pc-codigo { font-family:'DM Mono',monospace; font-size:12px; font-weight:500; }
   .pc-nombre { }
   .nivel-1 .pc-codigo { color:#1d4ed8; font-weight:700; }
@@ -89,6 +97,22 @@ const styles = `
     border:none; border-radius:10px; color:white; font-size:13px; font-weight:600;
     cursor:pointer; transition:opacity 0.2s; }
   .btn-nuevo:hover { opacity:0.9; }
+
+  @media (max-width: 900px) {
+    .pc-header { flex-wrap:wrap; gap:10px; }
+    .pc-title { font-size:18px; }
+    .btn-nuevo { width:100%; }
+    .pc-search { width:100%; }
+    .pc-toolbar { gap:8px; }
+  }
+
+  @media (max-width: 620px) {
+    .pc-title span { display:block; margin-left:0; margin-top:2px; }
+    .pc-stats { gap:8px; }
+    .pc-stat { width:100%; }
+    .pc-table-wrap { display:none; }
+    .pc-mobile-list { display:block; }
+  }
 `;
 
 
@@ -217,7 +241,7 @@ export default function PlanCuentas() {
           </div>
         </div>
 
-        {/* Tabla */}
+        {/* Tabla Desktop */}
         <div className="pc-table-wrap">
           <table className="pc-table">
             <thead>
@@ -288,6 +312,59 @@ export default function PlanCuentas() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Cards Mobile */}
+        <div className="pc-mobile-list">
+          {cargando ? (
+            <div className="pc-empty">Cargando plan de cuentas...</div>
+          ) : cuentasFiltradas.length === 0 ? (
+            <div className="pc-empty">No se encontraron cuentas</div>
+          ) : cuentasFiltradas.map((cuenta) => (
+            <div key={`m-${cuenta.id}`} className={`pc-card nivel-${cuenta.nivel}`}>
+              <div className="pc-card-head">
+                <span className="pc-card-code">{cuenta.codigo}</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>Nivel {cuenta.nivel}</span>
+              </div>
+              <div className="pc-card-name">{cuenta.nombre}</div>
+              <div className="pc-card-grid">
+                <div className="pc-card-row">
+                  <span className="pc-card-label">Tipo</span>
+                  <span className={`tipo-badge tipo-${cuenta.tipo}`}>{cuenta.tipo}</span>
+                </div>
+                <div className="pc-card-row">
+                  <span className="pc-card-label">Naturaleza</span>
+                  <span className={`nat-badge nat-${cuenta.naturaleza}`}>{cuenta.naturaleza}</span>
+                </div>
+                <div className="pc-card-row">
+                  <span className="pc-card-label">Informe</span>
+                  <span className={`informe-badge informe-${getInforme(cuenta.tipo)}`}>{getInforme(cuenta.tipo)}</span>
+                </div>
+                <div className="pc-card-row">
+                  <span className="pc-card-label">Movimiento</span>
+                  <span style={{ color: cuenta.acepta_movimiento ? '#16a34a' : '#9ca3af', fontWeight: 600 }}>
+                    {cuenta.acepta_movimiento ? 'SI' : 'NO'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ marginTop: '10px' }}>
+                <button
+                  style={{
+                    padding: '4px 10px',
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '6px',
+                    color: '#2563eb',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => { setCuentaEditar(cuenta); setVista('editar'); }}
+                >
+                  Editar
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </>

@@ -116,6 +116,29 @@ const styles = `
   .estado-view.CONFIRMADO { background:#dcfce7; color:#16a34a; }
   .estado-view.ANULADO { background:#fee2e2; color:#dc2626; }
   .estado-view.BORRADOR { background:#fef9c3; color:#854d0e; }
+
+  @media (max-width: 980px) {
+    .fa-wrap { max-width:100%; }
+    .fa-card { padding:16px; }
+    .fa-grid { grid-template-columns:1fr 1fr; gap:12px; }
+    .fa-grid-4 { grid-template-columns:1fr 1fr; gap:12px; }
+    .fa-group.span2, .fa-group.span3 { grid-column:span 2; }
+  }
+
+  @media (max-width: 680px) {
+    .fa-topbar { flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+    .fa-page-title { font-size:16px; }
+    .fa-num-badge { font-size:12px; }
+    .fa-grid, .fa-grid-4 { grid-template-columns:1fr; gap:10px; }
+    .fa-group.span2, .fa-group.span3 { grid-column:span 1; }
+    .lineas-table { min-width:920px; }
+    .lineas-table th { font-size:10px; padding:8px 10px; }
+    .lineas-table td { padding:7px 5px; }
+    .fa-footer { flex-direction:column; }
+    .btn-cancelar, .btn-borrador, .btn-confirmar { width:100%; }
+    .totales-bar { justify-content:flex-start; gap:10px; }
+    .total-item { align-items:flex-start; }
+  }
 `;
 
 const lineaVacia = (): Linea => ({

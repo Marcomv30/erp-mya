@@ -49,9 +49,26 @@ const styles = `
   .acceso-table th { text-align:left; padding:10px 12px; font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #e5e7eb; }
   .acceso-table td { padding:10px 12px; border-bottom:1px solid #f3f4f6; font-size:13px; color:#374151; }
   .acceso-table tr:last-child td { border-bottom:none; }
+  .acceso-mobile-list { display:none; }
+  .acceso-row-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .acceso-row-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
+  .acceso-row-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
   .acceso-chip-ok { color:#16a34a; font-weight:700; }
   .acceso-chip-no { color:#d1d5db; font-weight:700; }
   .acceso-empty { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; text-align:center; color:#9ca3af; font-size:13px; }
+
+  @media (max-width: 900px) {
+    .acceso-grid { grid-template-columns:1fr; }
+    .acceso-cards { grid-template-columns:1fr; }
+    .acceso-table-wrap { overflow-x:auto; }
+    .acceso-table { min-width:720px; }
+  }
+
+  @media (max-width: 620px) {
+    .acceso-table-wrap { display:none; }
+    .acceso-mobile-list { display:block; }
+    .acceso-row-grid { grid-template-columns:repeat(2,1fr); }
+  }
 `;
 
 export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
@@ -223,7 +240,8 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
         ) : matriz.length === 0 ? (
           <div className="acceso-empty">Sin permisos efectivos para esta combinacion.</div>
         ) : (
-          <div className="acceso-table-wrap">
+          <>
+          <div className="acceso-table-wrap rv-desktop-table">
             <table className="acceso-table">
               <thead>
                 <tr>
@@ -251,9 +269,33 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
               </tbody>
             </table>
           </div>
+          
+          
+          
+          
+          
+          <div className="acceso-mobile-list rv-mobile-cards">
+            {matriz.map((row) => (
+              <div key={`m-${row.modulo}`} className="acceso-row-card">
+                <div className="acceso-row-head">
+                  <strong style={{ color: '#111827' }}>{row.modulo}</strong>
+                </div>
+                <div className="acceso-row-grid">
+                  {ACCIONES.map((a) => (
+                    <div key={a}>
+                      <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '.05em' }}>{a}</div>
+                      <span className={row.acciones.has(a) ? 'acceso-chip-ok' : 'acceso-chip-no'}>
+                        {row.acciones.has(a) ? 'SI' : 'NO'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </>
   );
 }
-

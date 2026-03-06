@@ -52,12 +52,35 @@ const styles = `
   .sec-table { width:100%; border-collapse:collapse; min-width:1080px; }
   .sec-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; padding:10px; border-bottom:1px solid #e5e7eb; background:#f9fafb; }
   .sec-table td { font-size:12px; color:#374151; padding:10px; border-bottom:1px solid #f3f4f6; vertical-align:top; }
+  .sec-mobile-list { display:none; }
+  .sec-row-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .sec-row-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .sec-evt { font-weight:700; color:#0f766e; }
   .sec-evt.sev-low { color:#166534; }
   .sec-evt.sev-medium { color:#b45309; }
   .sec-evt.sev-high { color:#b91c1c; }
   .sec-user { font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:11px; }
   .sec-json { max-width:320px; white-space:pre-wrap; word-break:break-word; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:11px; color:#111827; }
+
+  @media (max-width: 980px) {
+    .sec-head { flex-wrap:wrap; }
+    .sec-actions { width:100%; }
+    .sec-filters { grid-template-columns:1fr 1fr; }
+    .sec-kpis { grid-template-columns:repeat(2,minmax(140px,1fr)); }
+    .sec-ranked-list { grid-template-columns:1fr 1fr; }
+  }
+
+  @media (max-width: 620px) {
+    .sec-title { font-size:18px; }
+    .sec-actions { flex-direction:column; }
+    .btn { width:100%; }
+    .sec-filters { grid-template-columns:1fr; }
+    .sec-unlock-box { flex-direction:column; align-items:stretch; }
+    .sec-kpis { grid-template-columns:1fr; }
+    .sec-ranked-list { grid-template-columns:1fr; }
+    .sec-table-wrap { display:none; }
+    .sec-mobile-list { display:block; }
+  }
 `;
 
 const EVENTOS = [
@@ -338,7 +361,7 @@ export default function BitacoraSeguridad({ canUnlock = true }: BitacoraSegurida
           )}
         </div>
 
-        <div className="sec-table-wrap">
+        <div className="sec-table-wrap rv-desktop-table">
           <table className="sec-table">
             <thead>
               <tr>
@@ -372,6 +395,27 @@ export default function BitacoraSeguridad({ canUnlock = true }: BitacoraSegurida
               )}
             </tbody>
           </table>
+        </div>
+        <div className="sec-mobile-list rv-mobile-cards">
+          {filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#9ca3af', padding: '20px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+              Sin eventos para los filtros seleccionados
+            </div>
+          ) : filtered.map((r) => (
+            <div key={`m-${r.id}`} className="sec-row-card">
+              <div className="sec-row-head">
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>{new Date(r.created_at).toLocaleString(systemLocale)}</span>
+                <span className={`sec-evt sev-${getEventSeverity(r.evento)}`}>{eventLabel(r.evento)}</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#374151', marginBottom: '6px' }}>
+                <strong>{r.entidad}</strong> · <span className="sec-user">{r.entidad_id || '-'}</span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
+                Actor: <span className="sec-user">{r.actor_uid || '-'}</span> · IP: <span className="sec-user">{r.ip || '-'}</span>
+              </div>
+              <div className="sec-json">{JSON.stringify(r.detalle || {}, null, 2)}</div>
+            </div>
+          ))}
         </div>
       </div>
     </>

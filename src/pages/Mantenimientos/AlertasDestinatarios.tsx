@@ -33,6 +33,19 @@ const styles = `
   .ar-btn.on { color:#166534; border-color:#bbf7d0; background:#dcfce7; }
   .ar-btn.off { color:#9a3412; border-color:#fdba74; background:#ffedd5; }
   .ar-btn.del { color:#991b1b; border-color:#fecaca; background:#fee2e2; }
+  .ar-mobile-list { display:none; }
+  .ar-row-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
+  .ar-row-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
+
+  @media (max-width: 620px) {
+    .ar-title { font-size:18px; }
+    .ar-add { grid-template-columns:1fr; }
+    .ar-btn-add { padding:10px 12px; }
+    .ar-card { display:none; }
+    .ar-mobile-list { display:block; }
+    .ar-actions { flex-direction:column; align-items:stretch; }
+    .ar-btn { width:100%; text-align:center; }
+  }
 `;
 
 interface AlertasDestinatariosProps {
@@ -184,6 +197,37 @@ export default function AlertasDestinatarios({
               )}
             </tbody>
           </table>
+        </div>
+        <div className="ar-mobile-list">
+          {rows.length === 0 && !loading ? (
+            <div style={{ textAlign: 'center', color: '#9ca3af', padding: '18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
+              Sin destinatarios configurados
+            </div>
+          ) : rows.map((r) => (
+            <div key={`m-${r.id}`} className="ar-row-card">
+              <div className="ar-row-head">
+                <span className="ar-email">{r.email}</span>
+                <span className={`ar-badge ${r.activo ? 'on' : 'off'}`}>
+                  {r.activo ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px' }}>
+                {new Date(r.created_at).toLocaleString('es-CR')}
+              </div>
+              {(canEdit || canDelete) && (
+                <div className="ar-actions">
+                  {canEdit && r.activo ? (
+                    <button className="ar-btn off" onClick={() => toggle(r, false)}>Desactivar</button>
+                  ) : canEdit ? (
+                    <button className="ar-btn on" onClick={() => toggle(r, true)}>Activar</button>
+                  ) : null}
+                  {canDelete && (
+                    <button className="ar-btn del" onClick={() => remove(r)}>Eliminar</button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </>
