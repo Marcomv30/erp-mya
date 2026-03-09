@@ -21,3 +21,9 @@
     display: block;
   }
 }
+
+/* Regla universal: valores monetarios alineados a la derecha */
+.money-right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}

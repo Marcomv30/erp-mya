@@ -5,15 +5,25 @@ import ListaActividades from './pages/Mantenimientos/ListaActividades';
 import ListaUsuarios from './pages/Mantenimientos/ListaUsuarios';
 import ListaRoles from './pages/Mantenimientos/ListaRoles';
 import ListaModulos from './pages/Mantenimientos/ListaModulos';
+import ParametrosEmpresa from './pages/Mantenimientos/ParametrosEmpresa';
 import BitacoraSeguridad from './pages/Mantenimientos/BitacoraSeguridad';
 import AlertasDestinatarios from './pages/Mantenimientos/AlertasDestinatarios';
 import EstadoAcceso from './pages/Mantenimientos/EstadoAcceso';
+import AsientosDuplicados from './pages/Mantenimientos/AsientosDuplicados';
+import HistorialTipoCambio from './pages/Mantenimientos/HistorialTipoCambio';
 import PlanCuentas from './pages/Contabilidad/PlanCuentas';
 import ListaAsientos from './pages/Contabilidad/ListaAsientos';
 import CatalogoEmpresa from './pages/Contabilidad/CatalogoEmpresa';
 import MayorGeneral from './pages/Contabilidad/MayorGeneral';
+import BalanceComprobacion from './pages/Contabilidad/BalanceComprobacion';
+import BalanceSituacion from './pages/Contabilidad/BalanceSituacion';
+import EstadoResultados from './pages/Contabilidad/EstadoResultados';
 import TiposAsiento from './pages/Contabilidad/TiposAsiento';
 import ReporteAsientosTipo from './pages/Contabilidad/ReporteAsientosTipo';
+import SmokeContabilidad from './pages/Contabilidad/SmokeContabilidad';
+import CierreMensual from './pages/Contabilidad/CierreMensual';
+import AuditoriaCierres from './pages/Contabilidad/AuditoriaCierres';
+import EstadosFinancieros from './pages/Contabilidad/EstadosFinancieros';
 
 interface Empresa {
   id: number;
@@ -84,11 +94,17 @@ const MENU_CONFIG: MenuModuleConfig[] = [
     nombre: 'Contabilidad', icono: '🧮', id: 'contabilidad', route: 'contabilidad',
     permission: { modulo: 'contabilidad', accion: 'ver' },
     submenus: [
-      { id: 'plancuentas', nombre: 'Plan de Cuentas', icono: '📋', route: 'contabilidad.plancuentas', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'plancuentas', nombre: 'Plan de Cuentas (BASE)', icono: '📋', route: 'contabilidad.plancuentas', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'asientos', nombre: 'Asientos', icono: '📝', route: 'contabilidad.asientos', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'mayorgeneral', nombre: 'Mayor General', icono: '📚', route: 'contabilidad.mayorgeneral', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'balancecomprobacion', nombre: 'Balance Comprobación', icono: '⚖️', route: 'contabilidad.balancecomprobacion', permission: { modulo: 'contabilidad', accion: 'ver' } },
-      { id: 'catalogo', nombre: 'Catálogo Contable', icono: '📂', route: 'contabilidad.catalogo', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'balancesituacion', nombre: 'Balance de Situación', icono: '🏦', route: 'contabilidad.balancesituacion', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'estadoderesultados', nombre: 'Estado de Resultados', icono: '📉', route: 'contabilidad.estadoderesultados', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'eeff', nombre: 'Estados Financieros (EEFF)', icono: '📊', route: 'contabilidad.eeff', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'smokecontabilidad', nombre: 'Smoke Contable', icono: '🧪', route: 'contabilidad.smokecontabilidad', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'cierremensual', nombre: 'Cierre Mensual', icono: '🔒', route: 'contabilidad.cierremensual', permission: { modulo: 'contabilidad', accion: 'editar' } },
+      { id: 'auditoriacierres', nombre: 'Auditoria Cierres', icono: '🕵️', route: 'contabilidad.auditoriacierres', permission: { modulo: 'contabilidad', accion: 'ver' } },
+      { id: 'catalogo', nombre: 'Catálogo Contable (EMPRESA)', icono: '📂', route: 'contabilidad.catalogo', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'tiposasiento', nombre: 'Tipos de Asiento', icono: '🏷️', route: 'contabilidad.tiposasiento', permission: { modulo: 'contabilidad', accion: 'ver' } },
       { id: 'reporteasientostipo', nombre: 'Reporte por Tipo', icono: '📑', route: 'contabilidad.reporteasientostipo', permission: { modulo: 'contabilidad', accion: 'ver' } },
     ],
@@ -109,6 +125,7 @@ const MENU_CONFIG: MenuModuleConfig[] = [
     nombre: 'Mantenimientos', icono: '🛠️', id: 'mantenimientos', route: 'mantenimientos',
     permission: { modulo: 'mantenimientos', accion: 'ver' },
     submenus: [
+      { id: 'parametrosempresa', nombre: 'Parámetros Empresa', icono: '⚙️', route: 'mantenimientos.parametrosempresa', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'empresas', nombre: 'Empresas', icono: '🏢', route: 'mantenimientos.empresas', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'actividades', nombre: 'Actividades', icono: '🏭', route: 'mantenimientos.actividades', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'usuarios', nombre: 'Usuarios', icono: '👤', route: 'mantenimientos.usuarios', permission: { modulo: 'mantenimientos', accion: 'ver' } },
@@ -117,6 +134,8 @@ const MENU_CONFIG: MenuModuleConfig[] = [
       { id: 'seguridad', nombre: 'Bitácora Seguridad', icono: '🛡️', route: 'mantenimientos.seguridad', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'alertas', nombre: 'Destinatarios Alertas', icono: '📧', route: 'mantenimientos.alertas', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'estadoacceso', nombre: 'Estado de Acceso', icono: '🔍', route: 'mantenimientos.estadoacceso', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'asientosduplicados', nombre: 'Asientos Duplicados', icono: '🧹', route: 'mantenimientos.asientosduplicados', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'historialtipocambio', nombre: 'Historial Tipo Cambio', icono: '💱', route: 'mantenimientos.historialtipocambio', permission: { modulo: 'mantenimientos', accion: 'ver' } },
     ],
   },
 ];
@@ -220,6 +239,9 @@ const COLOR_PALETTES: ColorPalette[] = [
 ];
 
 const THEME_STORAGE_KEY = 'mya-color-theme';
+const REPORT_COMPANY_NAME_KEY = 'mya_report_company_name';
+const MAYOR_GENERAL_PREFILL_KEY = 'mya_mayor_general_prefill';
+const ASIENTO_OPEN_PREFILL_KEY = 'mya_asiento_open_prefill';
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -287,8 +309,20 @@ const styles = `
   .btn-login:disabled { opacity:0.6; cursor:not-allowed; }
   .login-error { font-size:12px; color:#dc2626; text-align:center; margin:4px 0 10px; }
   .login-footer { font-size:11px; color:#94a3b8; text-align:center; margin-top:24px; font-family:'DM Mono',monospace; }
-  .app-shell { min-height:100vh; display:grid; grid-template-rows:var(--navbar-h) 1fr; grid-template-columns:var(--sidebar-w) 1fr; grid-template-areas:"sidebar navbar" "sidebar main"; background:var(--gray-100); }
-  .navbar { grid-area:navbar; background:var(--bg-dark); display:flex; align-items:flex-start; padding:10px 24px 8px; gap:16px; border-bottom:1px solid rgba(34,197,94,0.12); }
+  .app-shell { min-height:100vh; display:grid; grid-template-rows:auto 1fr; grid-template-columns:var(--sidebar-w) 1fr; grid-template-areas:"sidebar navbar" "sidebar main"; background:var(--gray-100); }
+  .navbar {
+    grid-area:navbar;
+    background:var(--bg-dark);
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:10px 24px 8px;
+    border-bottom:1px solid rgba(34,197,94,0.12);
+    position:sticky;
+    top:0;
+    z-index:40;
+  }
+  .navbar-top { display:flex; align-items:flex-start; gap:16px; }
   .navbar-menu-btn {
     display:none; width:36px; height:36px; border-radius:8px;
     border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.1);
@@ -336,17 +370,44 @@ const styles = `
   .navbar-dropdown::-webkit-scrollbar-thumb:hover { background:#64748b; }
   .navbar-badge { font-size:11px; font-family:'DM Mono',monospace; color:var(--gray-400); }
   .navbar-badge span { color:var(--green-main); font-weight:500; }
+  .navbar-tc {
+    font-size:11px;
+    font-family:'DM Mono',monospace;
+    color:#d1fae5;
+    background:rgba(34,197,94,0.12);
+    border:1px solid rgba(34,197,94,0.25);
+    border-radius:7px;
+    padding:4px 8px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    white-space:nowrap;
+  }
+  .navbar-tc b { color:#86efac; font-weight:700; }
   .navbar-clock { font-size:13px; font-family:'DM Mono',monospace; color:white; font-weight:500; background:rgba(34,197,94,0.10); padding:4px 10px; border-radius:6px; border:1px solid rgba(34,197,94,0.2); }
   .navbar-user { display:flex; align-items:center; gap:8px; }
   .navbar-user-meta { display:flex; flex-direction:column; gap:2px; }
-  .navbar-avatar { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; color:white; }
+  .navbar-company-picker { width:36px; height:36px; border-radius:10px; border:1px solid rgba(255,255,255,0.24); background:rgba(255,255,255,0.12); color:#fff; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .navbar-company-picker:hover { background:rgba(255,255,255,0.22); }
   .navbar-username { font-size:13px; font-weight:500; color:white; }
   .navbar-userrole { font-size:11px; color:var(--green-main); font-family:'DM Mono',monospace; }
+  .company-modal-backdrop { position:fixed; inset:0; background:rgba(2,6,23,0.52); display:flex; align-items:center; justify-content:center; z-index:80; padding:16px; }
+  .company-modal { width:min(520px, 100%); background:#fff; border:1px solid #dbe1ea; border-radius:14px; box-shadow:0 20px 42px rgba(2,6,23,0.28); overflow:hidden; }
+  .company-modal-head { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid #e5e7eb; background:#f8fafc; }
+  .company-modal-title { font-size:14px; font-weight:700; color:#1f2937; }
+  .company-modal-close { border:1px solid #d1d5db; background:#fff; color:#334155; border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; }
+  .company-modal-list { max-height:55vh; overflow:auto; padding:10px; display:flex; flex-direction:column; gap:8px; }
+  .company-item { width:100%; border:1px solid #e5e7eb; border-radius:10px; background:#fff; padding:10px 12px; text-align:left; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .company-item:hover { border-color:#86efac; background:#f0fdf4; }
+  .company-item.active { border-color:#22c55e; background:#dcfce7; }
+  .company-item-name { font-size:13px; font-weight:600; color:#1f2937; }
+  .company-item-sub { font-size:11px; color:#64748b; }
+  .company-item-code { font-size:11px; color:#166534; font-family:'DM Mono',monospace; }
   .navbar-logout { display:flex; align-items:center; gap:6px; padding:7px 10px; border-radius:8px; border:1px solid rgba(248,113,113,0.28); background:rgba(248,113,113,0.12); color:#fecaca; font-size:12px; font-weight:600; cursor:pointer; transition:background 0.16s,border-color 0.16s,transform 0.1s; }
   .navbar-logout:hover { background:rgba(248,113,113,0.2); border-color:rgba(248,113,113,0.45); }
   .navbar-logout:active { transform:scale(0.98); }
   .navbar-logout-icon { font-size:13px; line-height:1; }
-  .sidebar { grid-area:sidebar; width:var(--sidebar-w); background:linear-gradient(180deg,var(--bg-dark2),var(--bg-dark)); display:flex; flex-direction:column; align-items:stretch; padding:10px 10px 14px; border-right:1px solid rgba(255,255,255,0.08); overflow:hidden; transition:width 0.24s ease, box-shadow 0.24s ease; position:relative; z-index:8; }
+  .sidebar { grid-area:sidebar; width:var(--sidebar-w); background:linear-gradient(180deg,var(--bg-dark2),var(--bg-dark)); display:flex; flex-direction:column; align-items:stretch; padding:10px 10px 14px; border-right:1px solid rgba(255,255,255,0.08); overflow:hidden; transition:width 0.24s ease, box-shadow 0.24s ease; position:relative; z-index:70; }
   .sidebar:hover { width:260px; box-shadow:8px 0 32px rgba(0,0,0,0.28); }
   .sidebar-logo { width:100%; height:44px; display:flex; align-items:center; justify-content:flex-start; padding:0 8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; margin-bottom:10px; overflow:hidden; }
   .sidebar-logo-inner { min-width:30px; width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:white; box-shadow:0 0 16px rgba(34,197,94,0.25); }
@@ -369,7 +430,26 @@ const styles = `
   .sidebar-exit-icon { font-size:14px; color:#fca5a5; }
   .sidebar-exit-label { font-size:12px; color:#fca5a5; font-weight:500; white-space:nowrap; opacity:0; transform:translateX(-8px); transition:opacity 0.16s ease, transform 0.16s ease; }
   .sidebar:hover .sidebar-exit-label { opacity:1; transform:translateX(0); }
-  .main-content { grid-area:main; padding:28px 32px; overflow-y:auto; }
+  .main-content { grid-area:main; padding:8px 32px 28px; overflow-y:auto; position:relative; isolation:isolate; }
+  .navbar-breadcrumb {
+    display:flex; align-items:center; gap:8px;
+    margin:0; padding:6px 0 2px;
+    font-size:16px; color:#94a3b8;
+    border-top:1px solid rgba(255,255,255,0.08);
+    margin-left:-24px;
+    margin-right:-24px;
+    padding-left:24px;
+    padding-right:24px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    min-width:0;
+  }
+  .navbar-breadcrumb-home { cursor:pointer; color:#22c55e; font-weight:500; flex:0 0 auto; }
+  .navbar-breadcrumb-sep { flex:0 0 auto; }
+  .navbar-breadcrumb-module { color:#f1f5f9; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .navbar-breadcrumb-module.is-link { color:#94a3b8; cursor:pointer; }
+  .navbar-breadcrumb-submenu { color:#f8fafc; font-weight:500; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .sidebar-backdrop {
     display:none; position:fixed; inset:0; z-index:50; background:rgba(2,6,23,0.45);
   }
@@ -416,22 +496,20 @@ const styles = `
     .app-shell {
       grid-template-columns:1fr;
       grid-template-areas:"navbar" "main";
-      grid-template-rows:var(--navbar-h) 1fr;
+      grid-template-rows:auto 1fr;
     }
     .navbar {
-      align-items:center;
       padding:10px 14px;
       gap:10px;
-      position:sticky;
-      top:0;
       z-index:55;
     }
+    .navbar-top { align-items:center; width:100%; }
     .navbar-menu-btn { display:flex; }
     .navbar-company-name { font-size:13px; }
     .navbar-company-sub { font-size:10px; }
     .navbar-company-switch { width:100%; max-width:280px; margin-top:4px; }
     .navbar-right { gap:8px; margin-top:0; }
-    .navbar-badge, .navbar-clock { display:none; }
+    .navbar-badge, .navbar-clock, .navbar-tc { display:none; }
     .navbar-user-meta { display:none; }
     .navbar-logout { padding:6px 8px; font-size:11px; }
     .navbar-dropdown { width:min(92vw, 340px); right:0; }
@@ -457,7 +535,13 @@ const styles = `
       transform:translateX(0);
     }
     .sidebar-backdrop.show { display:block; }
-    .main-content { padding:14px 14px 22px; }
+    .main-content { padding:6px 14px 22px; }
+    .navbar-breadcrumb {
+      font-size:15px;
+      padding:6px 14px 2px;
+      margin-left:-14px;
+      margin-right:-14px;
+    }
     .welcome-bar { padding:14px; gap:10px; flex-wrap:wrap; }
     .welcome-bar-right { margin-left:0; text-align:left; width:100%; }
     .favoritos-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
@@ -467,9 +551,18 @@ const styles = `
   @media (max-width: 620px) {
     .navbar-company-switch { max-width:100%; }
     .navbar-user { gap:6px; }
-    .navbar-avatar { width:28px; height:28px; font-size:12px; }
+    .navbar-company-picker { width:32px; height:32px; font-size:14px; border-radius:9px; }
     .navbar-logout span:last-child { display:none; }
-    .main-content { padding:12px; }
+    .main-content { padding:5px 12px 12px; }
+    .navbar-breadcrumb {
+      font-size:14px;
+      padding:5px 12px 2px;
+      margin-left:-12px;
+      margin-right:-12px;
+    }
+    .navbar-breadcrumb-module { display:none; }
+    .navbar-breadcrumb-module.is-link { display:none; }
+    .navbar-breadcrumb-module + .navbar-breadcrumb-sep { display:none; }
     .login-panel { padding:20px 16px; }
     .login-title { font-size:22px; }
     .field-input { margin-bottom:12px; }
@@ -873,19 +966,26 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
   const [moduloActivo, setModuloActivo] = useState('');
   const [submenu, setSubmenu] = useState('');
   const [showMaintDropdown, setShowMaintDropdown] = useState(false);
+  const [showEmpresasModal, setShowEmpresasModal] = useState(false);
+  const [cambiandoEmpresa, setCambiandoEmpresa] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [tipoCambioHoy, setTipoCambioHoy] = useState<{ compra: number; venta: number } | null>(null);
   const maintDropdownRef = React.useRef<HTMLDivElement | null>(null);
   const can = (moduloId: string, accion: PermissionAction = 'ver') => (
     permisos.includes(`${moduloId}:${accion}`)
     || (accion !== 'aprobar' && permisos.includes(`${moduloId}:aprobar`))
   );
   const canAccess = (route: string) => {
+    if (route === 'contabilidad.auditoriacierres') {
+      return Boolean(usuario.es_superusuario);
+    }
     const rule = ROUTE_PERMISSION_MAP.get(route);
     if (!rule) return true;
     return can(rule.modulo, rule.accion);
   };
 
   const modulosPermitidos = MENU_CONFIG.filter(m => canAccess(m.route));
+  const modulosSidebar = modulosPermitidos;
   const modulosNavegables = modulosPermitidos.filter((m) => m.id !== 'mantenimientos');
   const moduloMantenimientos = MENU_CONFIG.find((m) => m.id === 'mantenimientos');
   const puedeVerMantenimientos = Boolean(moduloMantenimientos && canAccess(moduloMantenimientos.route));
@@ -918,8 +1018,90 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
     setModuloActivo('');
     setSubmenu('');
     setShowMaintDropdown(false);
+    setShowEmpresasModal(false);
     setMobileSidebarOpen(false);
   }, [empresa.id]);
+
+  const cambiarEmpresaDesdeModal = async (empresaId: number) => {
+    if (!empresaId || empresaId === empresa.id || cambiandoEmpresa) return;
+    setCambiandoEmpresa(true);
+    try {
+      await onCambiarEmpresa(empresaId);
+      setShowEmpresasModal(false);
+    } finally {
+      setCambiandoEmpresa(false);
+    }
+  };
+
+  useEffect(() => {
+    const cargarTipoCambioHoy = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase.rpc('get_tipo_cambio_historial', {
+        p_empresa_id: empresa.id,
+        p_fecha_desde: today,
+        p_fecha_hasta: today,
+      });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const row: any = data[0];
+        const compra = Number(row?.compra || 0);
+        const venta = Number(row?.venta || 0);
+        if (compra > 0 && venta > 0) {
+          setTipoCambioHoy({ compra, venta });
+          console.debug('[TC] Cargado desde historial', { empresaId: empresa.id, fecha: today, compra, venta });
+          return;
+        }
+      }
+
+      // Si no existe TC del dia, intenta consulta silenciosa al BCCR.
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const jwt = sessionData.session?.access_token;
+        if (!jwt) {
+          setTipoCambioHoy(null);
+          return;
+        }
+
+        const { data: payload, error: fnError } = await supabase.functions.invoke('bccr-tipo-cambio', {
+          headers: { Authorization: `Bearer ${jwt}` },
+          body: { fecha: today },
+        });
+
+        if (fnError || !payload?.ok) {
+          setTipoCambioHoy(null);
+          return;
+        }
+
+        const compra = Number(payload.compra || 0);
+        const venta = Number(payload.venta || 0);
+        if (compra <= 0 || venta <= 0) {
+          setTipoCambioHoy(null);
+          console.debug('[TC] Respuesta BCCR sin valores validos', { empresaId: empresa.id, fecha: today, compra, venta });
+          return;
+        }
+
+        setTipoCambioHoy({ compra, venta });
+        console.debug('[TC] Cargado desde BCCR', { empresaId: empresa.id, fecha: payload.fecha || today, compra, venta });
+
+        // Persistir silenciosamente si el usuario tiene permisos.
+        if (can('mantenimientos', 'editar')) {
+          await supabase.rpc('set_tipo_cambio_dia', {
+            p_empresa_id: empresa.id,
+            p_fecha: payload.fecha || today,
+            p_compra: compra,
+            p_venta: venta,
+            p_fuente: 'BCCR',
+            p_raw_data: payload,
+          });
+          console.debug('[TC] Guardado silencioso en historial', { empresaId: empresa.id, fecha: payload.fecha || today });
+        }
+      } catch {
+        setTipoCambioHoy(null);
+        console.debug('[TC] No disponible en arranque', { empresaId: empresa.id, fecha: today });
+      }
+    };
+    cargarTipoCambioHoy();
+  }, [empresa.id, permisos]);
 
   useEffect(() => {
     const onDocClick = (ev: MouseEvent) => {
@@ -950,6 +1132,47 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
     if (window.innerWidth <= 980) setMobileSidebarOpen(false);
   };
 
+  const abrirMayorGeneralDesdeBalance = (payload: {
+    cuenta: string;
+    nombre?: string;
+    desde: string;
+    hasta: string;
+    moneda: 'CRC' | 'USD';
+    origen?: 'balancecomprobacion' | 'estadoderesultados' | 'balancesituacion';
+  }) => {
+    try {
+      sessionStorage.setItem(
+        MAYOR_GENERAL_PREFILL_KEY,
+        JSON.stringify({
+          empresaId: empresa.id,
+          ...payload,
+        })
+      );
+    } catch {
+      // ignore storage errors
+    }
+    setModuloActivo('contabilidad');
+    setSubmenu('mayorgeneral');
+    if (window.innerWidth <= 980) setMobileSidebarOpen(false);
+  };
+
+  const abrirAsientoDesdeEstadoResultados = (asientoId: number) => {
+    try {
+      sessionStorage.setItem(
+        ASIENTO_OPEN_PREFILL_KEY,
+        JSON.stringify({
+          empresaId: empresa.id,
+          asientoId: Number(asientoId || 0),
+        })
+      );
+    } catch {
+      // ignore storage errors
+    }
+    setModuloActivo('contabilidad');
+    setSubmenu('asientos');
+    if (window.innerWidth <= 980) setMobileSidebarOpen(false);
+  };
+
   const favoritos = modulosNavegables.filter(m => FAVORITOS_DEFAULT.includes(m.id));
   const otrosModulos = modulosNavegables.filter(m => !FAVORITOS_DEFAULT.includes(m.id));
   const fecha = new Date().toLocaleDateString('es-CR', {
@@ -968,7 +1191,7 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
           <div className="sidebar-logo-inner">M</div>
           <span className="sidebar-logo-label">Sistemas MYA</span>
         </div>
-        {modulosNavegables.map((mod, i) => (
+        {modulosSidebar.map((mod, i) => (
           <React.Fragment key={mod.id}>
             {i === 9 && <div className="sidebar-divider" />}
             <div className={`sidebar-item ${moduloActivo === mod.id ? 'active' : ''}`}
@@ -984,6 +1207,7 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       </aside>
 
       <nav className="navbar">
+        <div className="navbar-top">
         <button
           className="navbar-menu-btn"
           title="Abrir menu"
@@ -994,23 +1218,17 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
         <div className="navbar-company">
           <div className="navbar-company-name">{empresa.nombre}</div>
           <div className="navbar-company-sub">Cédula {empresa.cedula}</div>
-          {empresasAutorizadas.length > 1 && (
-            <select
-              className="navbar-company-switch"
-              value={empresa.id}
-              onChange={(e) => onCambiarEmpresa(Number(e.target.value))}
-            >
-              {empresasAutorizadas.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.codigo} — {emp.nombre}
-                </option>
-              ))}
-            </select>
-          )}
         </div>
         <div className="navbar-right">
           <div className="navbar-badge">CIA <span>{empresa.codigo}</span></div>
           <div className="navbar-badge">Ver <span>3.0</span></div>
+          {tipoCambioHoy && (
+            <div className="navbar-tc" title="Tipo de cambio del día">
+              <span>TC</span>
+              <span>C: <b>{tipoCambioHoy.compra.toFixed(2)}</b></span>
+              <span>V: <b>{tipoCambioHoy.venta.toFixed(2)}</b></span>
+            </div>
+          )}
           <div className="navbar-clock"><Clock /></div>
           {puedeVerMantenimientos && submenusMantenimientos.length > 0 && (
             <div className="navbar-tools" ref={maintDropdownRef}>
@@ -1043,7 +1261,15 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
             </div>
           )}
           <div className="navbar-user">
-            <div className="navbar-avatar">{usuario.username[0]?.toUpperCase()}</div>
+            {empresasAutorizadas.length > 1 && (
+              <button
+                className="navbar-company-picker"
+                title="Cambiar empresa"
+                onClick={() => setShowEmpresasModal(true)}
+              >
+                🏢
+              </button>
+            )}
             <div className="navbar-user-meta">
               <span className="navbar-username">{usuario.nombre}</span>
               <span className="navbar-userrole">{rolActivo}</span>
@@ -1054,37 +1280,42 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
             </button>
           </div>
         </div>
+        </div>
+        {moduloActivo && (
+          <div
+            className="navbar-breadcrumb"
+            title={`Inicio > ${modulosPermitidos.find(m => m.id === moduloActivo)?.nombre || moduloActivo}${submenu ? ` > ${submenuActivoLabel}` : ''}`}
+          >
+            <span className="navbar-breadcrumb-home"
+              onClick={() => { setModuloActivo(''); setSubmenu(''); }}>
+              Inicio
+            </span>
+            <span className="navbar-breadcrumb-sep">›</span>
+            <span className={`navbar-breadcrumb-module ${submenu ? 'is-link' : ''}`}
+              onClick={() => submenu ? setSubmenu('') : null}>
+              {modulosPermitidos.find(m => m.id === moduloActivo)?.nombre || moduloActivo}
+            </span>
+            {submenu && (
+              <>
+                <span className="navbar-breadcrumb-sep">›</span>
+                <span className="navbar-breadcrumb-submenu">{submenuActivoLabel}</span>
+              </>
+            )}
+          </div>
+        )}
       </nav>
 
     <main className="main-content">
 
-      {/* BREADCRUMB */}
-      {moduloActivo && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '8px',
-          marginBottom: '20px', fontSize: '18px', color: '#9ca3af'
-        }}>
-          <span style={{ cursor: 'pointer', color: '#16a34a', fontWeight: 500 }}
-            onClick={() => { setModuloActivo(''); setSubmenu(''); }}>
-            Inicio
-          </span>
-          <span>›</span>
-          <span style={{ color: submenu ? '#9ca3af' : '#1f2937', fontWeight: 500,
-            cursor: submenu ? 'pointer' : 'default' }}
-            onClick={() => submenu ? setSubmenu('') : null}>
-            {modulosPermitidos.find(m => m.id === moduloActivo)?.nombre || moduloActivo}
-          </span>
-          {submenu && (
-            <>
-              <span>›</span>
-              <span style={{ color: '#1f2937', fontWeight: 500 }}>{submenuActivoLabel}</span>
-            </>
-          )}
-        </div>
-      )}
-
       {moduloActivo === 'contabilidad' && submenu === 'asientos' && canAccess('contabilidad.asientos') && 
-       <ListaAsientos empresaId={empresa.id} />}
+       <ListaAsientos
+         empresaId={empresa.id}
+         canConfigurarCierreRapido={Boolean(
+           usuario.es_superusuario
+           || can('mantenimientos', 'editar')
+           || can('contabilidad', 'aprobar')
+         )}
+       />}
       {moduloActivo === 'mantenimientos' && submenu === 'roles' && canAccess('mantenimientos.roles') && (
         <ListaRoles
           canCreate={can('mantenimientos', 'crear')}
@@ -1106,6 +1337,12 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
           canDelete={can('mantenimientos', 'eliminar')}
         />
       )}
+      {moduloActivo === 'mantenimientos' && submenu === 'parametrosempresa' && canAccess('mantenimientos.parametrosempresa') && (
+        <ParametrosEmpresa
+          empresaId={empresa.id}
+          canEdit={can('mantenimientos', 'editar')}
+        />
+      )}
       {moduloActivo === 'mantenimientos' && submenu === 'seguridad' && canAccess('mantenimientos.seguridad') && (
         <BitacoraSeguridad canUnlock={can('mantenimientos', 'editar')} />
       )}
@@ -1119,8 +1356,52 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       {moduloActivo === 'mantenimientos' && submenu === 'estadoacceso' && canAccess('mantenimientos.estadoacceso') && (
         <EstadoAcceso canView={can('mantenimientos', 'ver')} />
       )}
+      {moduloActivo === 'mantenimientos' && submenu === 'asientosduplicados' && canAccess('mantenimientos.asientosduplicados') && (
+        <AsientosDuplicados empresaId={empresa.id} canEdit={can('mantenimientos', 'editar')} />
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'historialtipocambio' && canAccess('mantenimientos.historialtipocambio') && (
+        <HistorialTipoCambio empresaId={empresa.id} canEdit={can('mantenimientos', 'editar')} />
+      )}
       {moduloActivo === 'contabilidad' && submenu === 'plancuentas' && canAccess('contabilidad.plancuentas') && <PlanCuentas />}
-      {moduloActivo === 'contabilidad' && submenu === 'mayorgeneral' && canAccess('contabilidad.mayorgeneral') && <MayorGeneral empresaId={empresa.id} />}
+      {moduloActivo === 'contabilidad' && submenu === 'mayorgeneral' && canAccess('contabilidad.mayorgeneral') && (
+        <MayorGeneral
+          empresaId={empresa.id}
+          onVolver={(destino) => {
+            if (destino === 'estadoderesultados') setSubmenu('estadoderesultados');
+            else if (destino === 'balancesituacion') setSubmenu('balancesituacion');
+            else setSubmenu('balancecomprobacion');
+          }}
+        />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'balancecomprobacion' && canAccess('contabilidad.balancecomprobacion') && (
+        <BalanceComprobacion empresaId={empresa.id} onVerMovimientos={abrirMayorGeneralDesdeBalance} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'balancesituacion' && canAccess('contabilidad.balancesituacion') && (
+        <BalanceSituacion empresaId={empresa.id} onVerMovimientos={abrirMayorGeneralDesdeBalance} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'estadoderesultados' && canAccess('contabilidad.estadoderesultados') && (
+        <EstadoResultados
+          empresaId={empresa.id}
+          onVerMovimientos={abrirMayorGeneralDesdeBalance}
+          onVerAsientoCierre={abrirAsientoDesdeEstadoResultados}
+        />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'eeff' && canAccess('contabilidad.eeff') && (
+        <EstadosFinancieros
+          empresaId={empresa.id}
+          onVerMovimientos={abrirMayorGeneralDesdeBalance}
+          onVerAsientoCierre={abrirAsientoDesdeEstadoResultados}
+        />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'smokecontabilidad' && canAccess('contabilidad.smokecontabilidad') && (
+        <SmokeContabilidad empresaId={empresa.id} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'cierremensual' && canAccess('contabilidad.cierremensual') && (
+        <CierreMensual empresaId={empresa.id} onVerAsiento={abrirAsientoDesdeEstadoResultados} />
+      )}
+      {moduloActivo === 'contabilidad' && submenu === 'auditoriacierres' && canAccess('contabilidad.auditoriacierres') && (
+        <AuditoriaCierres empresaId={empresa.id} />
+      )}
       {moduloActivo === 'contabilidad' && submenu === '' && (
       <div>
         <div className="section-title" style={{ marginBottom: '20px' }}>
@@ -1145,7 +1426,7 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
         <CatalogoEmpresa empresaId={empresa.id} canEdit={can('contabilidad', 'editar')} />
       )}
       {moduloActivo === 'contabilidad' && submenu === 'tiposasiento' && canAccess('contabilidad.tiposasiento') && (
-        <TiposAsiento canEdit={can('contabilidad', 'editar')} />
+        <TiposAsiento empresaId={empresa.id} canEdit={can('contabilidad', 'editar')} />
       )}
       {moduloActivo === 'contabilidad' && submenu === 'reporteasientostipo' && canAccess('contabilidad.reporteasientostipo') && (
         <ReporteAsientosTipo empresaId={empresa.id} />
@@ -1220,6 +1501,41 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
     )}
 
     </main>
+    {showEmpresasModal && (
+      <div className="company-modal-backdrop" onClick={() => !cambiandoEmpresa && setShowEmpresasModal(false)}>
+        <div className="company-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="company-modal-head">
+            <div className="company-modal-title">Empresas autorizadas</div>
+            <button
+              className="company-modal-close"
+              onClick={() => setShowEmpresasModal(false)}
+              disabled={cambiandoEmpresa}
+            >
+              Cerrar
+            </button>
+          </div>
+          <div className="company-modal-list">
+            {empresasAutorizadas.map((emp) => {
+              const activa = Number(emp.id) === Number(empresa.id);
+              return (
+                <button
+                  key={emp.id}
+                  className={`company-item ${activa ? 'active' : ''}`}
+                  onClick={() => cambiarEmpresaDesdeModal(emp.id)}
+                  disabled={activa || cambiandoEmpresa}
+                >
+                  <div>
+                    <div className="company-item-name">{emp.nombre}</div>
+                    <div className="company-item-sub">Cédula {emp.cedula}</div>
+                  </div>
+                  <div className="company-item-code">{activa ? 'ACTIVA' : `CIA ${emp.codigo}`}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 }
@@ -1240,6 +1556,18 @@ function App() {
   useEffect(() => {
     localStorage.setItem(THEME_STORAGE_KEY, paletteId);
   }, [paletteId]);
+
+  useEffect(() => {
+    try {
+      if (sesion?.empresa?.nombre) {
+        localStorage.setItem(REPORT_COMPANY_NAME_KEY, sesion.empresa.nombre);
+      } else {
+        localStorage.removeItem(REPORT_COMPANY_NAME_KEY);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [sesion?.empresa?.id, sesion?.empresa?.nombre]);
 
   const palette = COLOR_PALETTES.find(item => item.id === paletteId) || COLOR_PALETTES[0];
   const cssVars: Record<string, string> = {

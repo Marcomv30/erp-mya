@@ -71,7 +71,7 @@ const styles = `
     border-radius:8px; text-align:center; letter-spacing:1px; }
 `;
 
-const TIPOS = ['ACTIVO', 'PASIVO', 'CAPITAL', 'INGRESO', 'GASTO'];
+const TIPOS = ['ACTIVO', 'PASIVO', 'CAPITAL', 'INGRESO', 'COSTO', 'GASTO'];
 const NATURALEZAS = ['DEBITO', 'CREDITO'];
 
 export default function FormCuenta({ cuenta, onGuardar, onCancelar }: Props) {

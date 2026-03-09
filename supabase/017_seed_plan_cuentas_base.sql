@@ -18,37 +18,50 @@ create temporary table tmp_plan_cuentas_seed (
 insert into tmp_plan_cuentas_seed (
   codigo, nombre, nivel, tipo, naturaleza, acepta_movimiento, padre_codigo
 ) values
-  ('1', 'ACTIVO', 1, 'ACTIVO', 'DEBITO', false, null),
-  ('1.1', 'ACTIVO CORRIENTE', 2, 'ACTIVO', 'DEBITO', false, '1'),
-  ('1.1.01', 'CAJA GENERAL', 3, 'ACTIVO', 'DEBITO', true, '1.1'),
-  ('1.1.02', 'BANCOS', 3, 'ACTIVO', 'DEBITO', true, '1.1'),
-  ('1.1.03', 'CUENTAS POR COBRAR', 3, 'ACTIVO', 'DEBITO', true, '1.1'),
-  ('1.2', 'ACTIVO NO CORRIENTE', 2, 'ACTIVO', 'DEBITO', false, '1'),
-  ('1.2.01', 'ACTIVOS FIJOS', 3, 'ACTIVO', 'DEBITO', true, '1.2'),
+  ('01', 'ACTIVO', 1, 'ACTIVO', 'DEBITO', false, null),
+  ('0101', 'ACTIVO CIRCULANTE', 2, 'ACTIVO', 'DEBITO', false, '01'),
+  ('0101-01', 'CAJA Y BANCOS', 3, 'ACTIVO', 'DEBITO', false, '0101'),
+  ('0101-01-001', 'CAJA', 4, 'ACTIVO', 'DEBITO', false, '0101-01'),
+  ('0101-01-001-001', 'CAJA GENERAL COLONES', 5, 'ACTIVO', 'DEBITO', true, '0101-01-001'),
+  ('0101-01-001-002', 'CAJA GENERAL DOLARES', 5, 'ACTIVO', 'DEBITO', true, '0101-01-001'),
+  ('0101-01-002', 'BANCOS', 4, 'ACTIVO', 'DEBITO', false, '0101-01'),
+  ('0101-01-002-001', 'BANCO BCR COLONES', 5, 'ACTIVO', 'DEBITO', true, '0101-01-002'),
+  ('0101-01-002-002', 'BANCO BCR DOLARES', 5, 'ACTIVO', 'DEBITO', true, '0101-01-002'),
+  ('0101-02', 'CUENTAS POR COBRAR', 3, 'ACTIVO', 'DEBITO', false, '0101'),
+  ('0101-02-001', 'CLIENTES', 4, 'ACTIVO', 'DEBITO', false, '0101-02'),
+  ('0101-02-001-001', 'CLIENTES NACIONALES', 5, 'ACTIVO', 'DEBITO', true, '0101-02-001'),
+  ('0101-02-001-002', 'CLIENTES EXTRANJEROS', 5, 'ACTIVO', 'DEBITO', true, '0101-02-001'),
 
-  ('2', 'PASIVO', 1, 'PASIVO', 'CREDITO', false, null),
-  ('2.1', 'PASIVO CORRIENTE', 2, 'PASIVO', 'CREDITO', false, '2'),
-  ('2.1.01', 'CUENTAS POR PAGAR', 3, 'PASIVO', 'CREDITO', true, '2.1'),
-  ('2.1.02', 'OBLIGACIONES LABORALES', 3, 'PASIVO', 'CREDITO', true, '2.1'),
-  ('2.2', 'PASIVO NO CORRIENTE', 2, 'PASIVO', 'CREDITO', false, '2'),
-  ('2.2.01', 'PRESTAMOS LARGO PLAZO', 3, 'PASIVO', 'CREDITO', true, '2.2'),
+  ('02', 'PASIVO', 1, 'PASIVO', 'CREDITO', false, null),
+  ('0201', 'PASIVO CORRIENTE', 2, 'PASIVO', 'CREDITO', false, '02'),
+  ('0201-01', 'CUENTAS POR PAGAR', 3, 'PASIVO', 'CREDITO', false, '0201'),
+  ('0201-01-001', 'PROVEEDORES', 4, 'PASIVO', 'CREDITO', false, '0201-01'),
+  ('0201-01-001-001', 'PROVEEDORES NACIONALES', 5, 'PASIVO', 'CREDITO', true, '0201-01-001'),
+  ('0201-01-001-002', 'PROVEEDORES EXTRANJEROS', 5, 'PASIVO', 'CREDITO', true, '0201-01-001'),
 
-  ('3', 'CAPITAL', 1, 'CAPITAL', 'CREDITO', false, null),
-  ('3.1', 'CAPITAL SOCIAL', 2, 'CAPITAL', 'CREDITO', true, '3'),
-  ('3.2', 'RESULTADOS ACUMULADOS', 2, 'CAPITAL', 'CREDITO', true, '3'),
+  ('03', 'CAPITAL', 1, 'CAPITAL', 'CREDITO', false, null),
+  ('0301', 'CAPITAL SOCIAL', 2, 'CAPITAL', 'CREDITO', false, '03'),
+  ('0301-01', 'APORTES DE SOCIOS', 3, 'CAPITAL', 'CREDITO', true, '0301'),
+  ('0302', 'RESULTADOS ACUMULADOS', 2, 'CAPITAL', 'CREDITO', true, '03'),
 
-  ('4', 'INGRESOS', 1, 'INGRESO', 'CREDITO', false, null),
-  ('4.1', 'VENTAS', 2, 'INGRESO', 'CREDITO', true, '4'),
-  ('4.2', 'OTROS INGRESOS', 2, 'INGRESO', 'CREDITO', true, '4'),
+  ('04', 'INGRESOS', 1, 'INGRESO', 'CREDITO', false, null),
+  ('0401', 'INGRESOS OPERATIVOS', 2, 'INGRESO', 'CREDITO', false, '04'),
+  ('0401-01', 'VENTAS', 3, 'INGRESO', 'CREDITO', false, '0401'),
+  ('0401-01-001', 'VENTAS DE MERCADERIAS', 4, 'INGRESO', 'CREDITO', false, '0401-01'),
+  ('0401-01-001-001', 'VENTAS NACIONALES', 5, 'INGRESO', 'CREDITO', true, '0401-01-001'),
 
-  ('5', 'GASTOS', 1, 'GASTO', 'DEBITO', false, null),
-  ('5.1', 'GASTOS ADMINISTRATIVOS', 2, 'GASTO', 'DEBITO', false, '5'),
-  ('5.1.01', 'SUELDOS Y SALARIOS', 3, 'GASTO', 'DEBITO', true, '5.1'),
-  ('5.1.02', 'SERVICIOS PUBLICOS', 3, 'GASTO', 'DEBITO', true, '5.1'),
-  ('5.1.03', 'ALQUILERES', 3, 'GASTO', 'DEBITO', true, '5.1'),
-  ('5.2', 'GASTOS DE VENTAS', 2, 'GASTO', 'DEBITO', false, '5'),
-  ('5.2.01', 'COMISIONES', 3, 'GASTO', 'DEBITO', true, '5.2'),
-  ('5.2.02', 'PUBLICIDAD', 3, 'GASTO', 'DEBITO', true, '5.2');
+  ('05', 'COSTOS', 1, 'COSTO', 'DEBITO', false, null),
+  ('0501', 'COSTOS DE VENTAS', 2, 'COSTO', 'DEBITO', false, '05'),
+  ('0501-01', 'COMPRAS', 3, 'COSTO', 'DEBITO', false, '0501'),
+  ('0501-01-001', 'COMPRAS LOCALES', 4, 'COSTO', 'DEBITO', false, '0501-01'),
+  ('0501-01-001-001', 'MERCADERIA NACIONAL', 5, 'COSTO', 'DEBITO', true, '0501-01-001'),
+
+  ('06', 'GASTOS', 1, 'GASTO', 'DEBITO', false, null),
+  ('0601', 'GASTOS OPERATIVOS', 2, 'GASTO', 'DEBITO', false, '06'),
+  ('0601-01', 'GASTOS DE ADMINISTRACION', 3, 'GASTO', 'DEBITO', false, '0601'),
+  ('0601-01-001', 'GASTOS DE PERSONAL', 4, 'GASTO', 'DEBITO', false, '0601-01'),
+  ('0601-01-001-001', 'SUELDOS Y SALARIOS', 5, 'GASTO', 'DEBITO', true, '0601-01-001'),
+  ('0601-01-001-002', 'CARGAS SOCIALES', 5, 'GASTO', 'DEBITO', true, '0601-01-001');
 
 -- 1) Update por codigo (si ya existe).
 update public.plan_cuentas_base b
@@ -89,4 +102,3 @@ commit;
 -- select codigo, nombre, nivel, tipo, naturaleza, acepta_movimiento, padre_id
 -- from public.plan_cuentas_base
 -- order by codigo;
-

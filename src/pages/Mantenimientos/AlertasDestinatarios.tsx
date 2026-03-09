@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Recipient {
   id: number;
@@ -15,6 +17,7 @@ const styles = `
   .ar-title span { font-size:12px; color:#6b7280; margin-left:8px; font-weight:500; }
   .ar-msg-ok { padding:10px 12px; margin-bottom:10px; border-radius:8px; background:#dcfce7; border:1px solid #bbf7d0; color:#166534; font-size:12px; }
   .ar-msg-err { padding:10px 12px; margin-bottom:10px; border-radius:8px; background:#fee2e2; border:1px solid #fecaca; color:#991b1b; font-size:12px; }
+  .ar-search { margin-bottom:10px; }
   .ar-add { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; display:grid; grid-template-columns:1fr 140px; gap:10px; margin-bottom:12px; }
   .ar-input { border:1px solid #d1d5db; border-radius:8px; padding:9px 10px; font-size:13px; outline:none; }
   .ar-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.12); }
@@ -61,9 +64,31 @@ export default function AlertasDestinatarios({
 }: AlertasDestinatariosProps) {
   const [rows, setRows] = useState<Recipient[]>([]);
   const [email, setEmail] = useState('');
+  const [search, setSearch] = useState('');
   const [ok, setOk] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const rowsFiltrados = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return rows;
+    return rows.filter((r) =>
+      (r.email || '').toLowerCase().includes(term) ||
+      (r.activo ? 'activo' : 'inactivo').includes(term)
+    );
+  }, [rows, search]);
+
+  const exportRows = rowsFiltrados.map((r) => ({
+    email: r.email,
+    estado: r.activo ? 'Activo' : 'Inactivo',
+    creado: new Date(r.created_at).toLocaleString('es-CR'),
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'email', title: 'Email', getValue: (row) => row.email, align: 'left', width: '50%' },
+    { key: 'estado', title: 'Estado', getValue: (row) => row.estado, width: '20%' },
+    { key: 'creado', title: 'Creado', getValue: (row) => row.creado, width: '30%' },
+  ];
 
   const load = async () => {
     setLoading(true);
@@ -133,10 +158,52 @@ export default function AlertasDestinatarios({
       <style>{styles}</style>
       <div className="ar-wrap">
         <div className="ar-head">
-          <div className="ar-title">Destinatarios de Alertas <span>{rows.length} registros</span></div>
+          <div className="ar-title">Destinatarios de Alertas <span>{rowsFiltrados.length} registros</span></div>
+          <ListToolbar
+            exports={(
+              <>
+                <button
+                  className="ar-btn on"
+                  onClick={() => exportCsv('destinatarios_alertas.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="ar-btn on"
+                  onClick={() => exportExcelXml('destinatarios_alertas.xls', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="ar-btn on"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Destinatarios de Alertas',
+                      subtitle: `Total: ${exportRows.length} registros`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+          />
         </div>
         {ok && <div className="ar-msg-ok">{ok}</div>}
         {err && <div className="ar-msg-err">{err}</div>}
+        <div className="ar-search">
+          <input
+            className="ar-input"
+            placeholder="Buscar por email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
         {canCreate && (
           <div className="ar-add">
@@ -163,7 +230,7 @@ export default function AlertasDestinatarios({
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {rowsFiltrados.map(r => (
                 <tr key={r.id}>
                   <td className="ar-email">{r.email}</td>
                   <td>
@@ -188,7 +255,7 @@ export default function AlertasDestinatarios({
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && !loading && (
+              {rowsFiltrados.length === 0 && !loading && (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '18px' }}>
                     Sin destinatarios configurados
@@ -199,11 +266,11 @@ export default function AlertasDestinatarios({
           </table>
         </div>
         <div className="ar-mobile-list">
-          {rows.length === 0 && !loading ? (
+          {rowsFiltrados.length === 0 && !loading ? (
             <div style={{ textAlign: 'center', color: '#9ca3af', padding: '18px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
               Sin destinatarios configurados
             </div>
-          ) : rows.map((r) => (
+          ) : rowsFiltrados.map((r) => (
             <div key={`m-${r.id}`} className="ar-row-card">
               <div className="ar-row-head">
                 <span className="ar-email">{r.email}</span>
@@ -233,3 +300,4 @@ export default function AlertasDestinatarios({
     </>
   );
 }
+

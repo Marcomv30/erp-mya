@@ -1,6 +1,9 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
 import FormEmpresa from './FormEmpresa';
+
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Empresa {
   id: number;
@@ -38,11 +41,21 @@ interface ModuloActividad {
   icono?: string | null;
 }
 
+interface ModuloSistema {
+  id: number;
+  codigo: string;
+  nombre: string;
+  icono?: string | null;
+}
+
 const styles = `
   .emp-wrap { padding: 0; }
   .emp-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
   .emp-title { font-size:20px; font-weight:600; color:#1f2937; letter-spacing:-0.3px; }
   .emp-title span { font-size:13px; font-weight:400; color:#9ca3af; margin-left:8px; }
+  .emp-search-row { margin-bottom:12px; }
+  .emp-search-input { width:100%; max-width:420px; padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#1f2937; outline:none; }
+  .emp-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .btn-nuevo { display:flex; align-items:center; gap:8px; padding:10px 18px;
     background:linear-gradient(135deg,#16a34a,#22c55e); border:none; border-radius:10px;
     color:white; font-size:13px; font-weight:600; cursor:pointer; transition:opacity 0.2s; }
@@ -94,7 +107,20 @@ const styles = `
   .emp-modulos-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .emp-modulo-item { display:flex; align-items:center; gap:8px; border:1px solid #e5e7eb;
     border-radius:8px; padding:8px 10px; background:#f8fafc; }
+  .emp-modulo-item input { width:15px; height:15px; accent-color:#16a34a; cursor:pointer; }
+  .emp-modulo-item.checked { border-color:#22c55e; background:#dcfce7; }
   .emp-modulo-label { font-size:12px; color:#374151; }
+  .emp-modulo-actions { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  .emp-modulo-btn { padding:8px 12px; border-radius:8px; border:1px solid; font-size:12px; font-weight:600; cursor:pointer; }
+  .emp-modulo-btn.save { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
+  .emp-modulo-btn.save:hover { background:#bbf7d0; }
+  .emp-modulo-btn.reset { background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
+  .emp-modulo-btn.reset:hover { background:#ffe4e6; }
+  .emp-modulo-btn:disabled { opacity:0.6; cursor:not-allowed; }
+  .emp-hint { font-size:12px; color:#6b7280; margin-bottom:10px; }
+  .emp-hint strong { color:#111827; }
+  .emp-msg-ok { font-size:12px; color:#166534; background:#dcfce7; border:1px solid #bbf7d0; padding:8px 10px; border-radius:8px; margin-bottom:10px; }
+  .emp-msg-err { font-size:12px; color:#9f1239; background:#fff1f2; border:1px solid #fecdd3; padding:8px 10px; border-radius:8px; margin-bottom:10px; }
   .emp-warning { font-size:12px; color:#92400e; background:#fffbeb; border:1px solid #fde68a;
     padding:10px 12px; border-radius:8px; margin-top:10px; }
 
@@ -135,9 +161,47 @@ export default function ListaEmpresas() {
   const [empresaEditar, setEmpresaEditar] = useState<Empresa | null>(null);
   const [confirmarEliminar, setConfirmarEliminar] = useState<Empresa | null>(null);
   const [seleccionada, setSeleccionada] = useState<Empresa | null>(null);
-  const [accordionOpen, setAccordionOpen] = useState(false);
   const [modulosActividad, setModulosActividad] = useState<ModuloActividad[]>([]);
+  const [modulosSistema, setModulosSistema] = useState<ModuloSistema[]>([]);
+  const [modulosSeleccionadosEmpresa, setModulosSeleccionadosEmpresa] = useState<number[]>([]);
+  const [tieneOverrideEmpresa, setTieneOverrideEmpresa] = useState(false);
+  const [guardandoModulosEmpresa, setGuardandoModulosEmpresa] = useState(false);
+  const [msgOkModulosEmpresa, setMsgOkModulosEmpresa] = useState('');
+  const [msgErrModulosEmpresa, setMsgErrModulosEmpresa] = useState('');
   const [cargandoModulos, setCargandoModulos] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const empresasFiltradas = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return empresas;
+    return empresas.filter((e) =>
+      (e.codigo || '').toLowerCase().includes(term) ||
+      (e.nombre || '').toLowerCase().includes(term) ||
+      (e.cedula || '').toLowerCase().includes(term) ||
+      (e.telefono || '').toLowerCase().includes(term) ||
+      (e.email || '').toLowerCase().includes(term)
+    );
+  }, [empresas, search]);
+
+  const exportRows = empresasFiltradas.map((e) => ({
+    codigo: e.codigo,
+    nombre: e.nombre,
+    cedula: e.cedula,
+    telefono: e.telefono || '',
+    email: e.email || '',
+    actividad: e.actividad || '',
+    estado: e.activo ? 'Activo' : 'Inactivo',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'codigo', title: 'Codigo', getValue: (r) => r.codigo, align: 'left', width: '9%' },
+    { key: 'nombre', title: 'Nombre', getValue: (r) => r.nombre, align: 'left', width: '26%' },
+    { key: 'cedula', title: 'Cedula', getValue: (r) => r.cedula, width: '12%' },
+    { key: 'telefono', title: 'Telefono', getValue: (r) => r.telefono, width: '11%' },
+    { key: 'email', title: 'Email', getValue: (r) => r.email, align: 'left', width: '18%' },
+    { key: 'actividad', title: 'Actividad', getValue: (r) => r.actividad, width: '12%' },
+    { key: 'estado', title: 'Estado', getValue: (r) => r.estado, width: '12%' },
+  ];
 
   const cargarEmpresas = async () => {
     setCargando(true);
@@ -155,8 +219,21 @@ export default function ListaEmpresas() {
   const cargarModulosEmpresa = async (empresa: Empresa) => {
     setCargandoModulos(true);
     setModulosActividad([]);
+    setMsgErrModulosEmpresa('');
+    setMsgOkModulosEmpresa('');
+
+    const { data: modulosActivos } = await supabase
+      .from('modulos')
+      .select('id,codigo,nombre,icono')
+      .eq('activo', true)
+      .order('orden')
+      .order('nombre');
+
+    setModulosSistema((modulosActivos || []) as ModuloSistema[]);
 
     if (!empresa.actividad_id) {
+      setModulosSeleccionadosEmpresa([]);
+      setTieneOverrideEmpresa(false);
       setCargandoModulos(false);
       return;
     }
@@ -172,13 +249,81 @@ export default function ListaEmpresas() {
 
     modulos.sort((a, b) => a.nombre.localeCompare(b.nombre));
     setModulosActividad(modulos);
+
+    const inheritedIds = modulos.map((m) => m.id);
+
+    const { data: overrideRows, error: overrideError } = await supabase
+      .from('empresa_modulos')
+      .select('modulo_id')
+      .eq('empresa_id', empresa.id);
+
+    if (overrideError) {
+      setMsgErrModulosEmpresa(overrideError.message || 'No se pudo cargar override de módulos por empresa.');
+      setTieneOverrideEmpresa(false);
+      setModulosSeleccionadosEmpresa(inheritedIds);
+      setCargandoModulos(false);
+      return;
+    }
+
+    const overrideIds = (overrideRows || []).map((r: any) => Number(r.modulo_id));
+    const hasOverride = overrideIds.length > 0;
+    setTieneOverrideEmpresa(hasOverride);
+    setModulosSeleccionadosEmpresa(hasOverride ? overrideIds : inheritedIds);
     setCargandoModulos(false);
   };
 
   const seleccionarEmpresa = async (empresa: Empresa) => {
     setSeleccionada(empresa);
-    setAccordionOpen(false);
     await cargarModulosEmpresa(empresa);
+  };
+
+  const toggleModuloEmpresa = (moduloId: number) => {
+    setModulosSeleccionadosEmpresa((prev) =>
+      prev.includes(moduloId) ? prev.filter((id) => id !== moduloId) : [...prev, moduloId]
+    );
+  };
+
+  const guardarModulosEmpresa = async () => {
+    if (!seleccionada) return;
+    setGuardandoModulosEmpresa(true);
+    setMsgErrModulosEmpresa('');
+    setMsgOkModulosEmpresa('');
+
+    const { error } = await supabase.rpc('set_empresa_modules', {
+      p_empresa_id: seleccionada.id,
+      p_modulo_ids: modulosSeleccionadosEmpresa,
+    });
+
+    if (error) {
+      setMsgErrModulosEmpresa(error.message || 'No se pudieron guardar los módulos de la empresa.');
+      setGuardandoModulosEmpresa(false);
+      return;
+    }
+
+    setMsgOkModulosEmpresa('Módulos por empresa guardados correctamente.');
+    await cargarModulosEmpresa(seleccionada);
+    setGuardandoModulosEmpresa(false);
+  };
+
+  const volverHerenciaActividad = async () => {
+    if (!seleccionada) return;
+    setGuardandoModulosEmpresa(true);
+    setMsgErrModulosEmpresa('');
+    setMsgOkModulosEmpresa('');
+
+    const { error } = await supabase.rpc('clear_empresa_modules_override', {
+      p_empresa_id: seleccionada.id,
+    });
+
+    if (error) {
+      setMsgErrModulosEmpresa(error.message || 'No se pudo restaurar la herencia por actividad.');
+      setGuardandoModulosEmpresa(false);
+      return;
+    }
+
+    setMsgOkModulosEmpresa('Se restauró la herencia por actividad para esta empresa.');
+    await cargarModulosEmpresa(seleccionada);
+    setGuardandoModulosEmpresa(false);
   };
 
   useEffect(() => {
@@ -210,7 +355,6 @@ export default function ListaEmpresas() {
 
     if (seleccionada?.id === confirmarEliminar.id) {
       setSeleccionada(null);
-      setAccordionOpen(false);
       setModulosActividad([]);
     }
 
@@ -247,7 +391,51 @@ export default function ListaEmpresas() {
             Empresas
             <span>{empresas.length} registros</span>
           </div>
-          <button className="btn-nuevo" onClick={() => setVista('nuevo')}>+ Nueva Empresa</button>
+          <ListToolbar
+            exports={(
+              <>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportCsv('empresas.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportExcelXml('empresas.xls', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Empresas',
+                      subtitle: `Total: ${exportRows.length} registros`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                      orientation: 'landscape',
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+            actions={<button className="btn-nuevo" onClick={() => setVista('nuevo')}>+ Nueva Empresa</button>}
+          />
+        </div>
+
+        <div className="emp-search-row">
+          <input
+            className="emp-search-input"
+            placeholder="Buscar empresa por codigo, nombre, cedula, telefono o email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         <div className="emp-layout">
@@ -268,10 +456,10 @@ export default function ListaEmpresas() {
               <tbody>
                 {cargando ? (
                   <tr><td colSpan={8} className="emp-loading">Cargando empresas...</td></tr>
-                ) : empresas.length === 0 ? (
+                ) : empresasFiltradas.length === 0 ? (
                   <tr><td colSpan={8} className="emp-empty">No hay empresas registradas</td></tr>
                 ) : (
-                  empresas.map((emp) => (
+                  empresasFiltradas.map((emp) => (
                     <tr key={emp.id} className={seleccionada?.id === emp.id ? 'selected' : ''} onClick={() => seleccionarEmpresa(emp)}>
                       <td><span className="emp-codigo">{emp.codigo}</span></td>
                       <td><strong>{emp.nombre}</strong></td>
@@ -299,10 +487,10 @@ export default function ListaEmpresas() {
           <div className="emp-mobile-list rv-mobile-cards">
             {cargando ? (
               <div className="emp-loading">Cargando empresas...</div>
-            ) : empresas.length === 0 ? (
+            ) : empresasFiltradas.length === 0 ? (
               <div className="emp-empty">No hay empresas registradas</div>
             ) : (
-              empresas.map((emp) => (
+              empresasFiltradas.map((emp) => (
                 <div
                   key={`m-${emp.id}`}
                   className="emp-card"
@@ -336,31 +524,53 @@ export default function ListaEmpresas() {
                   Los modulos se heredan desde la Actividad de la empresa ({seleccionada.actividad || 'sin actividad'}).
                 </div>
 
-                <button className="emp-accordion-btn" onClick={() => setAccordionOpen((v) => !v)}>
-                  <span>Modulos de esta empresa</span>
-                  <span className="emp-accordion-icon">{accordionOpen ? '▲' : '▼'}</span>
-                </button>
-
-                {accordionOpen && (
-                  <div className="emp-modulos">
-                    {cargandoModulos ? (
-                      <div className="emp-panel-sub">Cargando modulos...</div>
-                    ) : modulosActividad.length === 0 ? (
-                      <div className="emp-warning">
-                        Esta empresa no tiene modulos heredados. Revise la configuracion en Mantenimientos {'>'} Actividades.
-                      </div>
-                    ) : (
-                      <div className="emp-modulos-grid">
-                        {modulosActividad.map((mod) => (
-                          <div key={mod.id} className="emp-modulo-item">
-                            <span>{mod.icono || '•'}</span>
-                            <span className="emp-modulo-label">{mod.nombre}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                <div className="emp-modulos">
+                  <div className="emp-hint">
+                    Modo actual: <strong>{tieneOverrideEmpresa ? 'Override por empresa' : 'Herencia por actividad'}</strong>
                   </div>
-                )}
+                  {msgOkModulosEmpresa && <div className="emp-msg-ok">{msgOkModulosEmpresa}</div>}
+                  {msgErrModulosEmpresa && <div className="emp-msg-err">{msgErrModulosEmpresa}</div>}
+                  <div className="emp-modulo-actions">
+                    <button
+                      className="emp-modulo-btn save"
+                      onClick={guardarModulosEmpresa}
+                      disabled={guardandoModulosEmpresa}
+                    >
+                      {guardandoModulosEmpresa ? 'Guardando...' : 'Guardar módulos de esta empresa'}
+                    </button>
+                    <button
+                      className="emp-modulo-btn reset"
+                      onClick={volverHerenciaActividad}
+                      disabled={guardandoModulosEmpresa}
+                    >
+                      Volver a herencia por actividad
+                    </button>
+                  </div>
+                  {cargandoModulos ? (
+                    <div className="emp-panel-sub">Cargando modulos...</div>
+                  ) : modulosSistema.length === 0 ? (
+                    <div className="emp-warning">
+                      No hay módulos activos definidos en catálogo.
+                    </div>
+                  ) : (
+                    <div className="emp-modulos-grid">
+                      {modulosSistema.map((mod) => (
+                        <label
+                          key={mod.id}
+                          className={`emp-modulo-item ${modulosSeleccionadosEmpresa.includes(mod.id) ? 'checked' : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={modulosSeleccionadosEmpresa.includes(mod.id)}
+                            onChange={() => toggleModuloEmpresa(mod.id)}
+                          />
+                          <span>{mod.icono || '•'}</span>
+                          <span className="emp-modulo-label">{mod.nombre}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -384,3 +594,4 @@ export default function ListaEmpresas() {
     </>
   );
 }
+

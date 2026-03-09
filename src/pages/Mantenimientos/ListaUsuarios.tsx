@@ -1,5 +1,8 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Usuario {
   id: number;
@@ -58,6 +61,9 @@ const styles = `
   .usr-table tr:hover td { background:#f9fafb; cursor:pointer; }
   .usr-table tr.selected td { background:#dcfce7; }
   .usr-mobile-list { display:none; }
+  .usr-search-row { margin-bottom:12px; }
+  .usr-search-input { width:100%; max-width:420px; padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#1f2937; outline:none; }
+  .usr-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .usr-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
   .usr-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .usr-avatar { width:32px; height:32px; border-radius:8px;
@@ -169,9 +175,36 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
   const [usuarioReset, setUsuarioReset] = useState<Usuario | null>(null);
   const [resetPassword, setResetPassword] = useState('');
   const [resetPassword2, setResetPassword2] = useState('');
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     username: '', nombre: '', email: '', password: '', activo: true, es_superusuario: false,
   });
+
+  const usuariosFiltrados = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return usuarios;
+    return usuarios.filter((u) =>
+      (u.username || '').toLowerCase().includes(term) ||
+      (u.nombre || '').toLowerCase().includes(term) ||
+      (u.email || '').toLowerCase().includes(term)
+    );
+  }, [usuarios, search]);
+
+  const exportRows = usuariosFiltrados.map((u) => ({
+    username: u.username,
+    nombre: u.nombre,
+    nivel: u.es_superusuario ? 'Super Usuario' : '',
+    auth: u.auth_user_id ? 'Vinculado' : 'Pendiente',
+    estado: u.activo ? 'Activo' : 'Inactivo',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'username', title: 'Usuario', getValue: (r) => r.username, align: 'left', width: '20%' },
+    { key: 'nombre', title: 'Nombre', getValue: (r) => r.nombre, align: 'left', width: '34%' },
+    { key: 'nivel', title: 'Nivel', getValue: (r) => r.nivel, width: '16%' },
+    { key: 'auth', title: 'Auth', getValue: (r) => r.auth, width: '15%' },
+    { key: 'estado', title: 'Estado', getValue: (r) => r.estado, width: '15%' },
+  ];
 
   const mostrarExito = (msg: string) => {
     setExito(msg);
@@ -391,7 +424,50 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
       <div className="usr-wrap">
         <div className="usr-header">
           <div className="usr-title">Usuarios <span>{usuarios.length} registros</span></div>
-          {canCreate && <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Usuario</button>}
+          <ListToolbar
+            exports={(
+              <>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportCsv('usuarios.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportExcelXml('usuarios.xls', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Usuarios',
+                      subtitle: `Total: ${exportRows.length} registros`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+            actions={canCreate ? <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Usuario</button> : null}
+          />
+        </div>
+
+        <div className="usr-search-row">
+          <input
+            className="usr-search-input"
+            placeholder="Buscar usuario por login, nombre o email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {exito && <div className="success-msg">{exito}</div>}
@@ -411,13 +487,13 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
                 </tr>
               </thead>
               <tbody>
-                {usuarios.length === 0 ? (
+                {usuariosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af' }}>
                       No hay usuarios registrados
                     </td>
                   </tr>
-                ) : usuarios.map((usr) => (
+                ) : usuariosFiltrados.map((usr) => (
                   <tr
                     key={usr.id}
                     className={seleccionado?.id === usr.id ? 'selected' : ''}
@@ -458,9 +534,9 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
             </table>
           </div>
           <div className="usr-mobile-list rv-mobile-cards">
-            {usuarios.length === 0 ? (
+            {usuariosFiltrados.length === 0 ? (
               <div className="panel-empty">No hay usuarios registrados</div>
-            ) : usuarios.map((usr) => (
+            ) : usuariosFiltrados.map((usr) => (
               <div
                 key={`m-${usr.id}`}
                 className="usr-card"
@@ -643,3 +719,4 @@ export default function ListaUsuarios({ canCreate = true, canEdit = true, canDel
     </>
   );
 }
+

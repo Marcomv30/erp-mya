@@ -1,5 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../supabase';
+
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Actividad {
   id: number;
@@ -37,6 +40,9 @@ const styles = `
   .act-table tr:hover td { background:#f9fafb; cursor:pointer; }
   .act-table tr.selected td { background:#dcfce7; }
   .act-mobile-list { display:none; }
+  .act-search-row { margin-bottom:12px; }
+  .act-search-input { width:100%; max-width:360px; padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#1f2937; outline:none; }
+  .act-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .act-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
   .act-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .act-codigo { font-family:'DM Mono',monospace; font-weight:500; color:#16a34a; }
@@ -131,6 +137,28 @@ export default function ListaActividades() {
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState<Actividad | null>(null);
   const [form, setForm] = useState({ codigo: '', descripcion: '', activo: true });
+  const [search, setSearch] = useState('');
+
+  const actividadesFiltradas = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return actividades;
+    return actividades.filter((a) =>
+      (a.codigo || '').toLowerCase().includes(term) ||
+      (a.descripcion || '').toLowerCase().includes(term)
+    );
+  }, [actividades, search]);
+
+  const exportRows = actividadesFiltradas.map((a) => ({
+    codigo: a.codigo,
+    descripcion: a.descripcion,
+    estado: a.activo ? 'Activo' : 'Inactivo',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'codigo', title: 'Codigo', getValue: (r) => r.codigo, align: 'left', width: '20%' },
+    { key: 'descripcion', title: 'Descripcion', getValue: (r) => r.descripcion, align: 'left', width: '55%' },
+    { key: 'estado', title: 'Estado', getValue: (r) => r.estado, width: '25%' },
+  ];
 
   const cargar = async () => {
     const { data } = await supabase.from('actividad_empresa').select('*').order('descripcion');
@@ -237,7 +265,50 @@ export default function ListaActividades() {
             Actividades de Empresa
             <span>{actividades.length} registros</span>
           </div>
-          <button className="btn-nuevo" onClick={abrirNuevo}>+ Nueva Actividad</button>
+          <ListToolbar
+            exports={(
+              <>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportCsv('actividades_empresa.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportExcelXml('actividades_empresa.xls', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Actividades de Empresa',
+                      subtitle: `Total: ${exportRows.length} registros`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+            actions={<button className="btn-nuevo" onClick={abrirNuevo}>+ Nueva Actividad</button>}
+          />
+        </div>
+
+        <div className="act-search-row">
+          <input
+            className="act-search-input"
+            placeholder="Buscar actividad por codigo o descripcion..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         <div className="info-msg">
@@ -259,11 +330,11 @@ export default function ListaActividades() {
                 </tr>
               </thead>
               <tbody>
-                {actividades.length === 0 ? (
+                {actividadesFiltradas.length === 0 ? (
                   <tr><td colSpan={4} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af' }}>
                     No hay actividades. Cree una nueva.
                   </td></tr>
-                ) : actividades.map(act => (
+                ) : actividadesFiltradas.map(act => (
                   <tr key={act.id}
                     className={seleccionada?.id === act.id ? 'selected' : ''}
                     onClick={() => seleccionar(act)}>
@@ -286,9 +357,9 @@ export default function ListaActividades() {
             </table>
           </div>
           <div className="act-mobile-list rv-mobile-cards">
-            {actividades.length === 0 ? (
+            {actividadesFiltradas.length === 0 ? (
               <div className="panel-empty">No hay actividades. Cree una nueva.</div>
-            ) : actividades.map((act) => (
+            ) : actividadesFiltradas.map((act) => (
               <div
                 key={`m-${act.id}`}
                 className="act-card"
@@ -383,3 +454,4 @@ export default function ListaActividades() {
     </>
   );
 }
+

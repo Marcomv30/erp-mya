@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+import {
+  exportCsv as reportExportCsv,
+  exportExcelXml,
+  exportPdfWithPrint,
+  ReportColumn,
+} from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface AuditRow {
   id: number;
@@ -218,29 +225,25 @@ export default function BitacoraSeguridad({ canUnlock = true }: BitacoraSegurida
     return { total, failed24, blocked24, success24, critical7, topAttacked };
   }, [rows]);
 
-  const exportCsv = () => {
-    const header = ['id', 'created_at', 'evento', 'entidad', 'entidad_id', 'actor_uid', 'ip', 'detalle'];
-    const lines = [header.join(',')];
-    for (const r of filtered) {
-      lines.push([
-        csvEscape(r.id),
-        csvEscape(r.created_at),
-        csvEscape(r.evento),
-        csvEscape(r.entidad),
-        csvEscape(r.entidad_id || ''),
-        csvEscape(r.actor_uid || ''),
-        csvEscape(r.ip || ''),
-        csvEscape(JSON.stringify(r.detalle || {})),
-      ].join(','));
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `security_audit_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportRows = filtered.map((r) => ({
+    fecha: new Date(r.created_at).toLocaleString(systemLocale),
+    evento: eventLabel(r.evento),
+    entidad: r.entidad,
+    entidad_id: r.entidad_id || '',
+    actor_uid: r.actor_uid || '',
+    ip: r.ip || '',
+    detalle: JSON.stringify(r.detalle || {}),
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'fecha', title: 'Fecha', getValue: (row) => row.fecha, width: '13%' },
+    { key: 'evento', title: 'Evento', getValue: (row) => row.evento, align: 'left', width: '19%' },
+    { key: 'entidad', title: 'Entidad', getValue: (row) => row.entidad, width: '11%' },
+    { key: 'entidad_id', title: 'Entidad ID', getValue: (row) => row.entidad_id, width: '11%' },
+    { key: 'actor_uid', title: 'Actor UID', getValue: (row) => row.actor_uid, width: '16%' },
+    { key: 'ip', title: 'IP', getValue: (row) => row.ip, width: '10%' },
+    { key: 'detalle', title: 'Detalle', getValue: (row) => row.detalle, align: 'left', width: '20%' },
+  ];
 
   const desbloquear = async () => {
     if (!canUnlock) return;
@@ -268,10 +271,43 @@ export default function BitacoraSeguridad({ canUnlock = true }: BitacoraSegurida
           <div className="sec-title">
             Bitácora de Seguridad <span>{filtered.length} eventos</span>
           </div>
-          <div className="sec-actions">
-            <button className="btn btn-refresh" onClick={cargar} disabled={loading}>Actualizar</button>
-            <button className="btn btn-csv" onClick={exportCsv} disabled={filtered.length === 0}>Exportar CSV</button>
-          </div>
+          <ListToolbar
+            className="sec-actions"
+            exports={(
+              <>
+                <button
+                  className="btn btn-csv"
+                  onClick={() => reportExportCsv('bitacora_seguridad.csv', exportRows, exportColumns)}
+                  disabled={filtered.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn btn-refresh"
+                  onClick={() => exportExcelXml('bitacora_seguridad.xls', exportRows, exportColumns)}
+                  disabled={filtered.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="btn btn-refresh"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Bitacora de Seguridad',
+                      subtitle: `Eventos: ${exportRows.length}`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                      orientation: 'landscape',
+                    })
+                  }
+                  disabled={filtered.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+            actions={<button className="btn btn-refresh" onClick={cargar} disabled={loading}>Actualizar</button>}
+          />
         </div>
 
         {ok && <div className="sec-msg-ok">{ok}</div>}

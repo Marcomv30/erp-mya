@@ -1,5 +1,8 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Modulo {
   id: number;
@@ -30,6 +33,9 @@ const styles = `
   .mod-table tr:last-child td { border-bottom:none; }
   .mod-table tr:hover td { background:#f9fafb; }
   .mod-mobile-list { display:none; }
+  .mod-search-row { margin-bottom:12px; }
+  .mod-search-input { width:100%; max-width:360px; padding:9px 12px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#1f2937; outline:none; }
+  .mod-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .mod-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
   .mod-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
   .mod-codigo { font-family:'DM Mono',monospace; color:#16a34a; font-weight:500; }
@@ -110,6 +116,33 @@ export default function ListaModulos({
     orden: 1,
     activo: true
   });
+  const [search, setSearch] = useState('');
+
+  const modulosFiltrados = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return modulos;
+    return modulos.filter((m) =>
+      (m.codigo || '').toLowerCase().includes(term) ||
+      (m.nombre || '').toLowerCase().includes(term) ||
+      (m.icono || '').toLowerCase().includes(term)
+    );
+  }, [modulos, search]);
+
+  const exportRows = modulosFiltrados.map((m) => ({
+    codigo: m.codigo,
+    nombre: m.nombre,
+    icono: m.icono || '',
+    orden: m.orden,
+    estado: m.activo ? 'Activo' : 'Inactivo',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'codigo', title: 'Codigo', getValue: (r) => r.codigo, align: 'left', width: '16%' },
+    { key: 'nombre', title: 'Nombre', getValue: (r) => r.nombre, align: 'left', width: '38%' },
+    { key: 'icono', title: 'Icono', getValue: (r) => r.icono, width: '10%' },
+    { key: 'orden', title: 'Orden', getValue: (r) => r.orden, width: '12%' },
+    { key: 'estado', title: 'Estado', getValue: (r) => r.estado, width: '24%' },
+  ];
 
   const cargar = async () => {
     const { data } = await supabase.from('modulos').select('*').order('orden');
@@ -202,9 +235,50 @@ export default function ListaModulos({
             Módulos
             <span>{modulos.length} registros</span>
           </div>
-          {canCreate && (
-            <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Módulo</button>
-          )}
+          <ListToolbar
+            exports={(
+              <>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportCsv('modulos.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() => exportExcelXml('modulos.xls', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="btn-edit"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Modulos',
+                      subtitle: `Total: ${exportRows.length} registros`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+            actions={canCreate ? <button className="btn-nuevo" onClick={abrirNuevo}>+ Nuevo Módulo</button> : null}
+          />
+        </div>
+
+        <div className="mod-search-row">
+          <input
+            className="mod-search-input"
+            placeholder="Buscar modulo por codigo o nombre..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {exito && <div className="success-msg">{exito}</div>}
@@ -222,13 +296,13 @@ export default function ListaModulos({
               </tr>
             </thead>
             <tbody>
-              {modulos.length === 0 ? (
+              {modulosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#9ca3af' }}>
                     No hay módulos registrados
                   </td>
                 </tr>
-              ) : modulos.map(modulo => (
+              ) : modulosFiltrados.map(modulo => (
                 <tr key={modulo.id}>
                   <td><span className="mod-codigo">{modulo.codigo}</span></td>
                   <td>{modulo.nombre}</td>
@@ -255,11 +329,11 @@ export default function ListaModulos({
           </table>
         </div>
         <div className="mod-mobile-list rv-mobile-cards">
-          {modulos.length === 0 ? (
+          {modulosFiltrados.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center', color: '#9ca3af', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px' }}>
               No hay modulos registrados
             </div>
-          ) : modulos.map((modulo) => (
+          ) : modulosFiltrados.map((modulo) => (
             <div key={`m-${modulo.id}`} className="mod-card">
               <div className="mod-card-head">
                 <span className="mod-codigo">{modulo.codigo}</span>
@@ -373,5 +447,6 @@ export default function ListaModulos({
     </>
   );
 }
+
 
 

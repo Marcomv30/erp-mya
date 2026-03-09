@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabase';
+import { exportCsv, exportPdfWithPrint, formatBooleanFlag, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
+import ExcelJS from 'exceljs';
 
 interface CuentaEmpresa {
   id: number;
@@ -24,6 +27,9 @@ const styles = `
   .cat-title { font-size:20px; font-weight:600; color:#1f2937; letter-spacing:-0.3px; }
   .cat-title span { font-size:13px; font-weight:400; color:#9ca3af; margin-left:8px; }
   .cat-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:18px; }
+  .cat-export { margin-left:auto; display:flex; gap:8px; }
+  .cat-export-btn { padding:7px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#334155; font-size:12px; font-weight:600; cursor:pointer; }
+  .cat-export-btn:hover { border-color:#22c55e; color:#16a34a; background:#f0fdf4; }
   .cat-search { padding:9px 14px; border:1px solid #e5e7eb; border-radius:9px;
     font-size:13px; color:#1f2937; outline:none; width:260px;
     font-family:'DM Sans',sans-serif; transition:border-color 0.2s; }
@@ -40,6 +46,7 @@ const styles = `
   .tipo-btn.CAPITAL { background:#ede9fe; color:#7c3aed; border-color:#ddd6fe; }
   .tipo-btn.INGRESO { background:#dcfce7; color:#16a34a; border-color:#bbf7d0; }
   .tipo-btn.GASTO { background:#fee2e2; color:#dc2626; border-color:#fecaca; }
+  .tipo-btn.COSTO { background:#ffedd5; color:#c2410c; border-color:#fed7aa; }
   .tipo-btn.inactive { background:#f3f4f6; color:#9ca3af; border-color:#e5e7eb; }
   .cat-table-wrap { background:white; border-radius:14px; border:1px solid #e5e7eb;
     overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04); }
@@ -47,9 +54,9 @@ const styles = `
   .cat-table thead { background:#f9fafb; }
   .cat-table th { padding:12px 16px; text-align:left; font-size:11px; font-weight:600;
     color:#6b7280; letter-spacing:0.06em; text-transform:uppercase; border-bottom:1px solid #e5e7eb; }
-  .cat-table td { padding:10px 16px; font-size:13px; color:#374151; border-bottom:1px solid #f3f4f6; }
+  .cat-table td { padding:10px 16px; font-size:12px; color:#374151; border-bottom:1px solid #f3f4f6; }
   .cat-table tr:last-child td { border-bottom:none; }
-  .cat-table tr:hover td { background:#f9fafb; }
+  .cat-table tr:hover td { filter:brightness(0.99); }
   .cat-mobile-list { display:none; }
   .cat-card { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-bottom:8px; }
   .cat-card-head { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; }
@@ -63,7 +70,11 @@ const styles = `
   .nivel-2 .cat-nombre { font-weight:600; }
   .nivel-3 td:first-child { color:#16a34a; }
   .nivel-4 td:first-child { color:#d97706; }
-  .nivel-5 td { background:#fafafa; }
+  .cat-table tr.nivel-1 td { background:#dbeafe; }
+  .cat-table tr.nivel-2 td { background:#e0f2fe; }
+  .cat-table tr.nivel-3 td { background:#ecfeff; }
+  .cat-table tr.nivel-4 td { background:#f0f9ff; }
+  .cat-table tr.nivel-5 td { background:#f8fafc; }
   .cat-codigo { font-family:'DM Mono',monospace; font-size:12px; }
   .tipo-badge { display:inline-flex; padding:2px 8px; border-radius:5px; font-size:10px; font-weight:600; }
   .tipo-ACTIVO { background:#dbeafe; color:#1d4ed8; }
@@ -71,14 +82,24 @@ const styles = `
   .tipo-CAPITAL { background:#ede9fe; color:#7c3aed; }
   .tipo-INGRESO { background:#dcfce7; color:#16a34a; }
   .tipo-GASTO { background:#fee2e2; color:#dc2626; }
+  .tipo-COSTO { background:#ffedd5; color:#c2410c; }
   .mov-si { color:#16a34a; font-size:16px; }
   .mov-no { color:#e5e7eb; font-size:16px; }
+  .estado-badge { display:inline-flex; align-items:center; padding:2px 8px;
+    border-radius:5px; font-size:10px; font-weight:600; }
+  .estado-activo { background:#dcfce7; color:#166534; }
+  .estado-inactivo { background:#fee2e2; color:#991b1b; }
+  .cat-table tr.row-inactiva td { opacity:0.7; }
   .cat-empty { padding:48px; text-align:center; color:#9ca3af; font-size:13px; }
   .cat-stats { display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
   .cat-stat { background:white; border:1px solid #e5e7eb; border-radius:10px;
     padding:12px 16px; display:flex; flex-direction:column; gap:2px; }
   .cat-stat-num { font-size:20px; font-weight:700; color:#1f2937; }
   .cat-stat-label { font-size:11px; color:#9ca3af; font-weight:500; }
+  .cat-mode { margin-bottom:12px; font-size:12px; color:#6b7280; display:flex; align-items:center; gap:8px; }
+  .cat-mode-badge { display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; border:1px solid; font-size:11px; font-weight:700; }
+  .cat-mode-badge.inherited { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
+  .cat-mode-badge.override { background:#dcfce7; border-color:#bbf7d0; color:#166534; }
 
   .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5);
     display:flex; align-items:center; justify-content:center; z-index:1000; }
@@ -121,6 +142,8 @@ const styles = `
     .cat-title { font-size:18px; }
     .cat-search { width:100%; }
     .cat-toolbar { gap:8px; }
+    .cat-export { margin-left:0; width:100%; }
+    .cat-export-btn { flex:1; text-align:center; }
   }
 
   @media (max-width: 620px) {
@@ -132,9 +155,10 @@ const styles = `
     .modal-actions { flex-direction:column; }
     .btn-cancelar, .btn-guardar { width:100%; }
   }
+
 `;
 
-const TIPOS = ['ACTIVO', 'PASIVO', 'CAPITAL', 'INGRESO', 'GASTO'];
+const TIPOS = ['ACTIVO', 'PASIVO', 'CAPITAL', 'INGRESO', 'COSTO', 'GASTO'];
 const NIVELES = [1, 2, 3, 4, 5];
 
 export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: number; canEdit: boolean }) {
@@ -142,6 +166,7 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
   const [cargando, setCargando] = useState(true);
   const [filtroNivel, setFiltroNivel] = useState<number | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
+  const [filtroEstado, setFiltroEstado] = useState<'TODAS' | 'ACTIVAS' | 'INACTIVAS'>('TODAS');
   const [busqueda, setBusqueda] = useState('');
   const [editando, setEditando] = useState<CuentaEmpresa | null>(null);
   const [form, setForm] = useState({ codigo: '', nombre: '', activo: true });
@@ -232,7 +257,8 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
     const base = c.plan_cuentas_base as any;
     if (filtroNivel && base?.nivel !== filtroNivel) return false;
     if (filtroTipo && base?.tipo !== filtroTipo) return false;
-    if (!c.activo) return false;
+    if (filtroEstado === 'ACTIVAS' && !c.activo) return false;
+    if (filtroEstado === 'INACTIVAS' && c.activo) return false;
     if (busqueda) {
       const b = busqueda.toLowerCase();
       return c.codigo.toLowerCase().includes(b) || c.nombre.toLowerCase().includes(b);
@@ -241,12 +267,154 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
   });
 
   const stats = {
-    total: cuentas.filter((c) => c.activo).length,
+    total: cuentas.length,
     movimiento: cuentas.filter((c) => c.activo && (c.plan_cuentas_base as any)?.acepta_movimiento).length,
     personalizadas: cuentas.filter((c) => {
       const base = c.plan_cuentas_base as any;
       return c.codigo !== base?.codigo || c.nombre !== base?.nombre;
     }).length,
+    inactivas: cuentas.filter((c) => !c.activo).length,
+  };
+
+  const hasOverride = stats.personalizadas > 0;
+
+  const exportRows = cuentasFiltradas.map((c) => {
+    const b = c.plan_cuentas_base as any;
+    return {
+      codigo_empresa: c.codigo,
+      nombre_empresa: c.nombre,
+      codigo_base: b?.codigo || '',
+      nivel: b?.nivel || '',
+      tipo: b?.tipo || '',
+      naturaleza: b?.naturaleza || '',
+      movimiento: formatBooleanFlag(!!b?.acepta_movimiento, 'export'),
+    };
+  });
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'codigo_empresa', title: 'Codigo Empresa', getValue: (r) => r.codigo_empresa, align: 'left', width: '12%' },
+    { key: 'nombre_empresa', title: 'Nombre Empresa', getValue: (r) => r.nombre_empresa, align: 'left', width: '32%' },
+    { key: 'codigo_base', title: 'Codigo Base', getValue: (r) => r.codigo_base, width: '12%' },
+    { key: 'nivel', title: 'Nivel', getValue: (r) => r.nivel, width: '8%' },
+    { key: 'tipo', title: 'Tipo', getValue: (r) => r.tipo, width: '10%' },
+    { key: 'naturaleza', title: 'Naturaleza', getValue: (r) => r.naturaleza, width: '14%' },
+    { key: 'movimiento', title: 'Mov.', getValue: (r) => r.movimiento, width: '12%' },
+  ];
+
+  const exportExcelCatalogoEmpresa = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Catalogo Empresa', {
+      views: [{ state: 'frozen', ySplit: 5, showGridLines: false }],
+    });
+    const company = (typeof window !== 'undefined' ? localStorage.getItem('mya_report_company_name') : '') || 'Empresa';
+    const title = 'Catalogo Contable (EMPRESA)';
+    const subtitle = `Total: ${cuentasFiltradas.length} cuentas`;
+
+    ws.columns = [
+      { key: 'codigo_empresa', width: 18 },
+      { key: 'nombre_empresa', width: 44 },
+      { key: 'codigo_base', width: 18 },
+      { key: 'nivel', width: 10 },
+      { key: 'tipo', width: 14 },
+      { key: 'naturaleza', width: 14 },
+      { key: 'movimiento', width: 12 },
+    ];
+    ws.pageSetup = {
+      paperSize: 9,
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+    };
+
+    const borderColor = { argb: 'FFD1D5DB' };
+    const borderHeader = {
+      top: { style: 'thin' as const, color: borderColor },
+      bottom: { style: 'thin' as const, color: borderColor },
+      left: { style: 'thin' as const, color: borderColor },
+      right: { style: 'thin' as const, color: borderColor },
+    };
+    const borderVertical = {
+      left: { style: 'thin' as const, color: borderColor },
+      right: { style: 'thin' as const, color: borderColor },
+    };
+    const borderVerticalBottom = {
+      left: { style: 'thin' as const, color: borderColor },
+      right: { style: 'thin' as const, color: borderColor },
+      bottom: { style: 'thin' as const, color: borderColor },
+    };
+    const levelFill: Record<number, string> = {
+      1: 'FFDBEAFE',
+      2: 'FFE0F2FE',
+      3: 'FFECFEFF',
+      4: 'FFF0F9FF',
+      5: 'FFF8FAFC',
+    };
+
+    ws.mergeCells('A1:G1');
+    ws.getCell('A1').value = company;
+    ws.getCell('A1').font = { bold: true, size: 14 };
+    ws.getCell('A1').alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A2:G2');
+    ws.getCell('A2').value = title;
+    ws.getCell('A2').font = { bold: true, size: 13 };
+    ws.getCell('A2').alignment = { horizontal: 'center' };
+
+    ws.mergeCells('A3:G3');
+    ws.getCell('A3').value = subtitle;
+    ws.getCell('A3').font = { italic: true, size: 10 };
+    ws.getCell('A3').alignment = { horizontal: 'center' };
+
+    ws.addRow([]);
+    const h = ws.addRow(['Codigo Empresa', 'Nombre Empresa', 'Codigo Base', 'Nivel', 'Tipo', 'Naturaleza', 'Movimiento']);
+    h.eachCell((c, idx) => {
+      c.font = { bold: true, color: { argb: 'FF1F2937' } };
+      c.alignment = { horizontal: 'center', vertical: 'middle' };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+      c.border = {
+        ...borderHeader,
+        left: idx === 1 ? borderHeader.left : borderVertical.left,
+        right: idx === 7 ? borderHeader.right : borderVertical.right,
+      };
+    });
+
+    cuentasFiltradas.forEach((cuenta, i) => {
+      const base = cuenta.plan_cuentas_base as any;
+      const nivel = Math.max(1, Math.min(5, Number(base?.nivel) || 5));
+      const fillArgb = levelFill[nivel] || 'FFF8FAFC';
+      const isLast = i === cuentasFiltradas.length - 1;
+      const row = ws.addRow([
+        cuenta.codigo,
+        cuenta.nombre,
+        base?.codigo || '',
+        `Nivel ${base?.nivel || ''}`,
+        base?.tipo || '',
+        base?.naturaleza || '',
+        formatBooleanFlag(!!base?.acepta_movimiento, 'export'),
+      ]);
+
+      row.getCell(1).font = { name: 'Consolas', size: 10, color: { argb: 'FF0F766E' } };
+      row.getCell(3).font = { name: 'Consolas', size: 10, color: { argb: 'FF6B7280' } };
+      row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+
+      row.eachCell((cell) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } };
+        cell.border = isLast ? borderVerticalBottom : borderVertical;
+      });
+    });
+
+    ws.pageSetup.printArea = `A1:G${ws.rowCount}`;
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'catalogo_empresa.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -255,7 +423,7 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
       <div className="cat-wrap">
         <div className="cat-header">
           <div className="cat-title">
-            Catalogo Contable
+            Catalogo Contable (EMPRESA)
             <span>{cuentasFiltradas.length} cuentas</span>
           </div>
           {canEdit && (
@@ -264,20 +432,31 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
               onClick={reinicializarDesdeBase}
               disabled={reiniciando}
               style={{ minWidth: '210px' }}
-              title="Restaura codigo/nombre desde plan base para esta empresa"
+              title="Elimina personalizaciones y vuelve al catalogo base para esta empresa"
             >
-              {reiniciando ? 'Reinicializando...' : 'Reinicializar desde base'}
+              {reiniciando ? 'Restaurando...' : 'Volver a herencia base'}
             </button>
           )}
         </div>
 
         {errorMsg && <div className="error-msg">{errorMsg}</div>}
         {exito && <div className="success-msg">OK {exito}</div>}
+        <div className="cat-mode">
+          <span>Modo actual:</span>
+          <span className={`cat-mode-badge ${hasOverride ? 'override' : 'inherited'}`}>
+            {hasOverride ? 'Override por empresa' : 'Herencia base'}
+          </span>
+          <span>
+            {hasOverride
+              ? 'Esta empresa tiene cuentas personalizadas.'
+              : 'Esta empresa usa el catalogo base sin cambios.'}
+          </span>
+        </div>
 
         <div className="cat-stats">
           <div className="cat-stat">
             <span className="cat-stat-num">{stats.total}</span>
-            <span className="cat-stat-label">Cuentas Activas</span>
+            <span className="cat-stat-label">Total Cuentas</span>
           </div>
           <div className="cat-stat">
             <span className="cat-stat-num" style={{ color: '#16a34a' }}>{stats.movimiento}</span>
@@ -286,6 +465,10 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
           <div className="cat-stat">
             <span className="cat-stat-num" style={{ color: '#f59e0b' }}>{stats.personalizadas}</span>
             <span className="cat-stat-label">Personalizadas</span>
+          </div>
+          <div className="cat-stat">
+            <span className="cat-stat-num" style={{ color: '#991b1b' }}>{stats.inactivas}</span>
+            <span className="cat-stat-label">Inactivas</span>
           </div>
         </div>
 
@@ -318,6 +501,62 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
               </button>
             ))}
           </div>
+          <div className="cat-filters">
+            <button
+              className={`cat-filter-btn ${filtroEstado === 'TODAS' ? 'active' : ''}`}
+              onClick={() => setFiltroEstado('TODAS')}
+            >
+              Todas
+            </button>
+            <button
+              className={`cat-filter-btn ${filtroEstado === 'ACTIVAS' ? 'active' : ''}`}
+              onClick={() => setFiltroEstado('ACTIVAS')}
+            >
+              Activas
+            </button>
+            <button
+              className={`cat-filter-btn ${filtroEstado === 'INACTIVAS' ? 'active' : ''}`}
+              onClick={() => setFiltroEstado('INACTIVAS')}
+            >
+              Inactivas
+            </button>
+          </div>
+          <ListToolbar
+            className="cat-export"
+            exports={(
+              <>
+                <button
+                  className="cat-export-btn"
+                  onClick={() => exportCsv('catalogo_empresa.csv', exportRows, exportColumns)}
+                  disabled={exportRows.length === 0}
+                >
+                  CSV
+                </button>
+                <button
+                  className="cat-export-btn"
+                  onClick={exportExcelCatalogoEmpresa}
+                  disabled={exportRows.length === 0}
+                >
+                  EXCEL
+                </button>
+                <button
+                  className="cat-export-btn"
+                  onClick={() =>
+                    exportPdfWithPrint({
+                      title: 'Catalogo Contable (EMPRESA)',
+                      subtitle: `Total: ${exportRows.length} cuentas`,
+                      rows: exportRows,
+                      columns: exportColumns,
+                      orientation: 'landscape',
+                    })
+                  }
+                  disabled={exportRows.length === 0}
+                >
+                  PDF
+                </button>
+              </>
+            )}
+          />
         </div>
 
         <div className="cat-table-wrap rv-desktop-table">
@@ -331,27 +570,28 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
                 <th>Tipo</th>
                 <th>Naturaleza</th>
                 <th>Movimiento</th>
+                <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
-                <tr><td colSpan={8} className="cat-empty">Cargando catalogo...</td></tr>
+                <tr><td colSpan={9} className="cat-empty">Cargando catalogo...</td></tr>
               ) : cuentasFiltradas.length === 0 ? (
-                <tr><td colSpan={8} className="cat-empty">No se encontraron cuentas</td></tr>
+                <tr><td colSpan={9} className="cat-empty">No se encontraron cuentas</td></tr>
               ) : cuentasFiltradas.map((cuenta) => {
                 const base = cuenta.plan_cuentas_base as any;
                 const personalizada = cuenta.codigo !== base?.codigo || cuenta.nombre !== base?.nombre;
                 return (
-                  <tr key={cuenta.id} className={`nivel-${base?.nivel}`}>
+                  <tr key={cuenta.id} className={`nivel-${base?.nivel} ${!cuenta.activo ? 'row-inactiva' : ''}`}>
                     <td>
-                      <span className="cat-codigo" style={{ paddingLeft: `${(base?.nivel - 1) * 14}px` }}>
+                      <span className="cat-codigo">
                         {cuenta.codigo}
                         {personalizada && <span className="cat-personalizada">MOD</span>}
                       </span>
                     </td>
                     <td>
-                      <span className="cat-nombre" style={{ paddingLeft: `${(base?.nivel - 1) * 14}px` }}>
+                      <span className="cat-nombre">
                         {cuenta.nombre}
                       </span>
                     </td>
@@ -365,7 +605,12 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
                     <td style={{ fontSize: '12px', color: '#6b7280' }}>{base?.naturaleza}</td>
                     <td style={{ textAlign: 'center' }}>
                       <span className={base?.acepta_movimiento ? 'mov-si' : 'mov-no'}>
-                        {base?.acepta_movimiento ? 'OK' : '·'}
+                        {formatBooleanFlag(!!base?.acepta_movimiento, 'ui')}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`estado-badge ${cuenta.activo ? 'estado-activo' : 'estado-inactivo'}`}>
+                        {cuenta.activo ? 'ACTIVA' : 'INACTIVA'}
                       </span>
                     </td>
                     <td>
@@ -414,7 +659,13 @@ export default function CatalogoEmpresa({ empresaId, canEdit }: { empresaId: num
                   <div className="cat-card-row">
                     <span className="cat-card-label">Movimiento</span>
                     <span style={{ color: base?.acepta_movimiento ? '#16a34a' : '#9ca3af', fontWeight: 600 }}>
-                      {base?.acepta_movimiento ? 'SI' : 'NO'}
+                      {formatBooleanFlag(!!base?.acepta_movimiento, 'ui')}
+                    </span>
+                  </div>
+                  <div className="cat-card-row">
+                    <span className="cat-card-label">Estado</span>
+                    <span className={`estado-badge ${cuenta.activo ? 'estado-activo' : 'estado-inactivo'}`}>
+                      {cuenta.activo ? 'ACTIVA' : 'INACTIVA'}
                     </span>
                   </div>
                 </div>

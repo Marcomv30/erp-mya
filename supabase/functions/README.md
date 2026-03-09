@@ -111,3 +111,42 @@ curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"empresa_id":1}'
 ```
+
+---
+
+## bccr-tipo-cambio
+
+Consulta tipo de cambio compra/venta del BCCR para una fecha puntual.
+
+### Endpoint
+
+- `POST /functions/v1/bccr-tipo-cambio`
+  - body JSON: `{ "fecha": "2026-03-06" }`
+  - Las credenciales del BCCR se leen solo desde secrets del servidor.
+
+### Variables de entorno recomendadas
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `BCCR_NOMBRE`
+- `BCCR_CORREO`
+- `BCCR_TOKEN`
+- `BCCR_SUBNIVELES` (default `S`)
+
+### Deploy
+
+```bash
+supabase functions deploy bccr-tipo-cambio
+```
+
+### Configurar secrets
+
+```bash
+supabase secrets set \
+SUPABASE_URL="https://TU-PROYECTO.supabase.co" \
+SUPABASE_ANON_KEY="TU_ANON_KEY" \
+BCCR_NOMBRE="TuNombre" \
+BCCR_CORREO="tu@correo.com" \
+BCCR_TOKEN="tu-token-bccr" \
+BCCR_SUBNIVELES="S"
+```

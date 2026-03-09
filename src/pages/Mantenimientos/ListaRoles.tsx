@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 interface Rol {
   id: number;
@@ -52,6 +54,9 @@ const styles = `
   .btn-mass:disabled { opacity:0.6; cursor:not-allowed; }
 
   .rol-list { padding:8px; display:flex; flex-direction:column; gap:8px; max-height:620px; overflow:auto; }
+  .rol-search { padding:10px 12px 0; }
+  .rol-search-input { width:100%; padding:8px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; color:#1f2937; outline:none; }
+  .rol-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .rol-card { border:1px solid #e5e7eb; border-radius:10px; padding:10px; transition:border-color 0.15s, background 0.15s; cursor:pointer; }
   .rol-card:hover { border-color:#86efac; background:#f0fdf4; }
   .rol-card.sel { border-color:#22c55e; background:#dcfce7; }
@@ -143,6 +148,7 @@ export default function ListaRoles({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [ok, setOk] = useState('');
   const [err, setErr] = useState('');
+  const [searchRol, setSearchRol] = useState('');
 
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState<Rol | null>(null);
@@ -237,10 +243,39 @@ export default function ListaRoles({
     return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [catalogoPermisos]);
 
-  const permisoIdByModuloAccion = (moduloId: number, accion: string): number | null => {
+  const rolesFiltrados = useMemo(() => {
+    const term = searchRol.trim().toLowerCase();
+    if (!term) return roles;
+    return roles.filter((r) =>
+      (r.nombre || '').toLowerCase().includes(term) ||
+      (r.descripcion || '').toLowerCase().includes(term)
+    );
+  }, [roles, searchRol]);
+
+  const exportRows = modulosOrdenados.map((mod) => ({
+    modulo: mod.nombre,
+    codigo: mod.codigo,
+    ver: permisoIdByModuloAccion(mod.id, 'ver') ? (permisosRolSet.has(permisoIdByModuloAccion(mod.id, 'ver') as number) ? 'SI' : 'NO') : 'NO',
+    crear: permisoIdByModuloAccion(mod.id, 'crear') ? (permisosRolSet.has(permisoIdByModuloAccion(mod.id, 'crear') as number) ? 'SI' : 'NO') : 'NO',
+    editar: permisoIdByModuloAccion(mod.id, 'editar') ? (permisosRolSet.has(permisoIdByModuloAccion(mod.id, 'editar') as number) ? 'SI' : 'NO') : 'NO',
+    eliminar: permisoIdByModuloAccion(mod.id, 'eliminar') ? (permisosRolSet.has(permisoIdByModuloAccion(mod.id, 'eliminar') as number) ? 'SI' : 'NO') : 'NO',
+    aprobar: permisoIdByModuloAccion(mod.id, 'aprobar') ? (permisosRolSet.has(permisoIdByModuloAccion(mod.id, 'aprobar') as number) ? 'SI' : 'NO') : 'NO',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'modulo', title: 'Modulo', getValue: (r) => r.modulo, align: 'left', width: '26%' },
+    { key: 'codigo', title: 'Codigo', getValue: (r) => r.codigo, width: '12%' },
+    { key: 'ver', title: 'Ver', getValue: (r) => r.ver, width: '12%' },
+    { key: 'crear', title: 'Crear', getValue: (r) => r.crear, width: '12%' },
+    { key: 'editar', title: 'Editar', getValue: (r) => r.editar, width: '12%' },
+    { key: 'eliminar', title: 'Eliminar', getValue: (r) => r.eliminar, width: '13%' },
+    { key: 'aprobar', title: 'Aprobar', getValue: (r) => r.aprobar, width: '13%' },
+  ];
+
+  function permisoIdByModuloAccion(moduloId: number, accion: string): number | null {
     const row = catalogoPermisos.find(p => p.modulo_id === moduloId && p.accion === accion);
     return row?.id ?? null;
-  };
+  }
 
   const togglePermiso = async (moduloId: number, accion: string, checked: boolean) => {
     if (!canEdit) return;
@@ -462,8 +497,16 @@ export default function ListaRoles({
               <div className="rol-panel-title">Roles</div>
               <div className="rol-panel-sub">Selecciona un rol para editar permisos</div>
             </div>
+            <div className="rol-search">
+              <input
+                className="rol-search-input"
+                placeholder="Buscar rol..."
+                value={searchRol}
+                onChange={(e) => setSearchRol(e.target.value)}
+              />
+            </div>
             <div className="rol-list">
-              {roles.map(rol => (
+              {rolesFiltrados.map(rol => (
                 <article
                   key={rol.id}
                   className={`rol-card ${rolSeleccionado?.id === rol.id ? 'sel' : ''}`}
@@ -486,7 +529,7 @@ export default function ListaRoles({
                   </div>
                 </article>
               ))}
-              {roles.length === 0 && <div className="perm-empty">No hay roles registrados</div>}
+              {rolesFiltrados.length === 0 && <div className="perm-empty">No hay roles registrados</div>}
             </div>
           </section>
 
@@ -496,22 +539,60 @@ export default function ListaRoles({
                 <div className="perm-panel-title">
                   Matriz de permisos {rolSeleccionado ? `- ${rolSeleccionado.nombre}` : ''}
                 </div>
-                <div className="perm-head-actions">
-                  <button
-                    className="btn-mass add"
-                    onClick={marcarTodos}
-                    disabled={!canEdit || !rolSeleccionado || bulkBusy}
-                  >
-                    Marcar Todos
-                  </button>
-                  <button
-                    className="btn-mass del"
-                    onClick={quitarTodos}
-                    disabled={!canEdit || !rolSeleccionado || bulkBusy}
-                  >
-                    Quitar Todos
-                  </button>
-                </div>
+                <ListToolbar
+                  className="perm-head-actions"
+                  exports={(
+                    <>
+                      <button
+                        className="btn-mass add"
+                        onClick={() => exportCsv('roles_permisos.csv', exportRows, exportColumns)}
+                        disabled={!rolSeleccionado || exportRows.length === 0}
+                      >
+                        CSV
+                      </button>
+                      <button
+                        className="btn-mass add"
+                        onClick={() => exportExcelXml('roles_permisos.xls', exportRows, exportColumns)}
+                        disabled={!rolSeleccionado || exportRows.length === 0}
+                      >
+                        EXCEL
+                      </button>
+                      <button
+                        className="btn-mass add"
+                        onClick={() =>
+                          exportPdfWithPrint({
+                            title: 'Roles y Permisos',
+                            subtitle: `Rol: ${rolSeleccionado?.nombre || '-'} | Modulos: ${exportRows.length}`,
+                            rows: exportRows,
+                            columns: exportColumns,
+                            orientation: 'landscape',
+                          })
+                        }
+                        disabled={!rolSeleccionado || exportRows.length === 0}
+                      >
+                        PDF
+                      </button>
+                    </>
+                  )}
+                  actions={(
+                    <>
+                      <button
+                        className="btn-mass add"
+                        onClick={marcarTodos}
+                        disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                      >
+                        Marcar Todos
+                      </button>
+                      <button
+                        className="btn-mass del"
+                        onClick={quitarTodos}
+                        disabled={!canEdit || !rolSeleccionado || bulkBusy}
+                      >
+                        Quitar Todos
+                      </button>
+                    </>
+                  )}
+                />
               </div>
               <div className="perm-panel-sub">Marca los permisos del rol por modulo y accion</div>
             </div>

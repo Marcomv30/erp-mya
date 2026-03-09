@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../supabase';
+import { exportCsv, exportExcelXml, exportPdfWithPrint, ReportColumn } from '../../utils/reporting';
+import ListToolbar from '../../components/ListToolbar';
 
 type Accion = 'ver' | 'crear' | 'editar' | 'eliminar' | 'aprobar';
 
@@ -35,6 +37,12 @@ const styles = `
   .acceso-title { font-size:20px; font-weight:600; color:#1f2937; margin-bottom:4px; }
   .acceso-sub { font-size:13px; color:#9ca3af; margin-bottom:16px; }
   .acceso-info { padding:10px 14px; background:#e0f2fe; border:1px solid #bae6fd; border-radius:8px; color:#075985; font-size:12px; font-weight:500; margin-bottom:16px; }
+  .acceso-actions { display:flex; gap:8px; margin-bottom:12px; justify-content:flex-end; }
+  .acceso-export-btn { padding:7px 12px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; color:#334155; font-size:12px; font-weight:600; cursor:pointer; }
+  .acceso-export-btn:hover { border-color:#22c55e; color:#16a34a; background:#f0fdf4; }
+  .acceso-search { margin-bottom:12px; }
+  .acceso-search-input { width:100%; max-width:420px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#1f2937; outline:none; background:#fff; }
+  .acceso-search-input:focus { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,0.1); }
   .acceso-error { padding:10px 14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#b91c1c; font-size:12px; margin-bottom:16px; }
   .acceso-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
   .acceso-field label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:#6b7280; margin-bottom:6px; }
@@ -58,6 +66,8 @@ const styles = `
   .acceso-empty { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:20px; text-align:center; color:#9ca3af; font-size:13px; }
 
   @media (max-width: 900px) {
+    .acceso-actions { justify-content:stretch; }
+    .acceso-export-btn { flex:1; }
     .acceso-grid { grid-template-columns:1fr; }
     .acceso-cards { grid-template-columns:1fr; }
     .acceso-table-wrap { overflow-x:auto; }
@@ -79,6 +89,7 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
   const [permisos, setPermisos] = useState<PermisoRow[]>([]);
   const [cargando, setCargando] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const init = async () => {
@@ -172,8 +183,31 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
       .sort((a, b) => a.modulo.localeCompare(b.modulo));
   }, [permisos]);
 
+  const matrizFiltrada = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return matriz;
+    return matriz.filter((row) => row.modulo.toLowerCase().includes(term));
+  }, [matriz, search]);
+
   const ueSelected = empresasAsignadas.find((x) => x.id === usuarioEmpresaId) || null;
   const usuarioSelected = usuarios.find((u) => u.id === usuarioId) || null;
+  const exportRows = matrizFiltrada.map((row) => ({
+    modulo: row.modulo,
+    ver: row.acciones.has('ver') ? 'SI' : 'NO',
+    crear: row.acciones.has('crear') ? 'SI' : 'NO',
+    editar: row.acciones.has('editar') ? 'SI' : 'NO',
+    eliminar: row.acciones.has('eliminar') ? 'SI' : 'NO',
+    aprobar: row.acciones.has('aprobar') ? 'SI' : 'NO',
+  }));
+
+  const exportColumns: ReportColumn<(typeof exportRows)[number]>[] = [
+    { key: 'modulo', title: 'Modulo', getValue: (r) => r.modulo, align: 'left', width: '30%' },
+    { key: 'ver', title: 'Ver', getValue: (r) => r.ver, width: '14%' },
+    { key: 'crear', title: 'Crear', getValue: (r) => r.crear, width: '14%' },
+    { key: 'editar', title: 'Editar', getValue: (r) => r.editar, width: '14%' },
+    { key: 'eliminar', title: 'Eliminar', getValue: (r) => r.eliminar, width: '14%' },
+    { key: 'aprobar', title: 'Aprobar', getValue: (r) => r.aprobar, width: '14%' },
+  ];
 
   if (!canView) {
     return <div className="acceso-empty">No tiene permisos para ver esta seccion.</div>;
@@ -189,6 +223,50 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
           Esta pantalla usa permisos efectivos (rol + filtros de empresa/modulos) para identificar en segundos por que un usuario ve o no un menu.
         </div>
         {errorMsg && <div className="acceso-error">{errorMsg}</div>}
+        <ListToolbar
+          className="acceso-actions"
+          exports={(
+            <>
+              <button
+                className="acceso-export-btn"
+                onClick={() => exportCsv('estado_acceso.csv', exportRows, exportColumns)}
+                disabled={exportRows.length === 0}
+              >
+                CSV
+              </button>
+              <button
+                className="acceso-export-btn"
+                onClick={() => exportExcelXml('estado_acceso.xls', exportRows, exportColumns)}
+                disabled={exportRows.length === 0}
+              >
+                EXCEL
+              </button>
+              <button
+                className="acceso-export-btn"
+                onClick={() =>
+                  exportPdfWithPrint({
+                    title: 'Estado de Acceso',
+                    subtitle: `Usuario: ${usuarioSelected?.username || '-'} | Empresa: ${ueSelected?.empresas?.codigo || '-'}`,
+                    rows: exportRows,
+                    columns: exportColumns,
+                    orientation: 'landscape',
+                  })
+                }
+                disabled={exportRows.length === 0}
+              >
+                PDF
+              </button>
+            </>
+          )}
+        />
+        <div className="acceso-search">
+          <input
+            className="acceso-search-input"
+            placeholder="Buscar modulo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
         <div className="acceso-grid">
           <div className="acceso-field">
@@ -237,7 +315,7 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
 
         {cargando ? (
           <div className="acceso-empty">Cargando permisos...</div>
-        ) : matriz.length === 0 ? (
+        ) : matrizFiltrada.length === 0 ? (
           <div className="acceso-empty">Sin permisos efectivos para esta combinacion.</div>
         ) : (
           <>
@@ -254,7 +332,7 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
                 </tr>
               </thead>
               <tbody>
-                {matriz.map((row) => (
+                {matrizFiltrada.map((row) => (
                   <tr key={row.modulo}>
                     <td>{row.modulo}</td>
                     {ACCIONES.map((a) => (
@@ -275,7 +353,7 @@ export default function EstadoAcceso({ canView = true }: EstadoAccesoProps) {
           
           
           <div className="acceso-mobile-list rv-mobile-cards">
-            {matriz.map((row) => (
+            {matrizFiltrada.map((row) => (
               <div key={`m-${row.modulo}`} className="acceso-row-card">
                 <div className="acceso-row-head">
                   <strong style={{ color: '#111827' }}>{row.modulo}</strong>

@@ -15,6 +15,8 @@ as $$
 declare
   v_updated integer := 0;
   v_inserted integer := 0;
+  v_nivel integer;
+  v_lvl_updated integer := 0;
 begin
   if auth.uid() is null then
     raise exception 'Sesion invalida';
@@ -28,17 +30,22 @@ begin
     raise exception 'No tiene permisos para reinicializar el catalogo contable';
   end if;
 
-  update public.plan_cuentas_empresa e
-  set
-    codigo = b.codigo,
-    nombre = b.nombre,
-    activo = true
-  from public.plan_cuentas_base b
-  where e.empresa_id = p_empresa_id
-    and e.cuenta_base_id = b.id
-    and coalesce(b.activo, true) = true;
+  -- Actualiza en orden jerarquico (padre->hijo) para no violar validacion de padre.
+  for v_nivel in 1..5 loop
+    update public.plan_cuentas_empresa e
+    set
+      codigo = b.codigo,
+      nombre = b.nombre,
+      activo = true
+    from public.plan_cuentas_base b
+    where e.empresa_id = p_empresa_id
+      and e.cuenta_base_id = b.id
+      and coalesce(b.activo, true) = true
+      and coalesce(b.nivel, 0) = v_nivel;
 
-  get diagnostics v_updated = row_count;
+    get diagnostics v_lvl_updated = row_count;
+    v_updated := v_updated + v_lvl_updated;
+  end loop;
 
   insert into public.plan_cuentas_empresa (
     empresa_id,
@@ -60,7 +67,8 @@ begin
       from public.plan_cuentas_empresa e
       where e.empresa_id = p_empresa_id
         and e.cuenta_base_id = b.id
-    );
+    )
+  order by coalesce(b.nivel, 99), b.codigo;
 
   get diagnostics v_inserted = row_count;
   return v_updated + v_inserted;
@@ -71,4 +79,3 @@ grant execute on function public.reset_plan_cuentas_empresa(bigint) to authentic
 grant execute on function public.reset_plan_cuentas_empresa(bigint) to service_role;
 
 commit;
-

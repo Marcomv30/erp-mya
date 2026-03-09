@@ -48,7 +48,8 @@ begin
       from public.plan_cuentas_empresa e
       where e.empresa_id = p_empresa_id
         and e.cuenta_base_id = b.id
-    );
+    )
+  order by coalesce(b.nivel, 99), b.codigo;
 
   get diagnostics v_inserted = row_count;
   return v_inserted;
@@ -59,4 +60,3 @@ grant execute on function public.seed_plan_cuentas_empresa(bigint) to authentica
 grant execute on function public.seed_plan_cuentas_empresa(bigint) to service_role;
 
 commit;
-
