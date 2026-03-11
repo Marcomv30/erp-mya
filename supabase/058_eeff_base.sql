@@ -76,7 +76,16 @@ security definer
 set search_path = public
 as $$
   with er as (
-    select coalesce(sum(x.neto), 0)::numeric as utilidad_neta
+    select coalesce(
+      sum(
+        case
+          when x.tipo = 'INGRESO' then x.neto
+          when x.tipo in ('COSTO', 'GASTO') then -x.neto
+          else 0
+        end
+      ),
+      0
+    )::numeric as utilidad_neta
     from public.get_estado_resultados(p_empresa_id, p_fecha_desde, p_fecha_hasta, p_moneda) x
   )
   select
@@ -91,4 +100,3 @@ grant execute on function public.get_eeff_flujo_efectivo_base(bigint, date, date
 grant execute on function public.get_eeff_flujo_efectivo_base(bigint, date, date, text) to service_role;
 
 commit;
-

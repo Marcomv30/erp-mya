@@ -150,3 +150,44 @@ BCCR_CORREO="tu@correo.com" \
 BCCR_TOKEN="tu-token-bccr" \
 BCCR_SUBNIVELES="S"
 ```
+
+---
+
+## mh-contribuyente
+
+Consulta API de Ministerio de Hacienda para datos de contribuyente y actividades tributarias.
+
+### Endpoint
+
+- `POST /functions/v1/mh-contribuyente`
+  - body JSON: `{ "cedula": "3101..." }`
+
+### Variables de entorno recomendadas
+
+- `MH_CONTRIBUYENTE_API_URL` (default `https://api.hacienda.go.cr/fe/ae`)
+- `MH_CONTRIBUYENTE_API_METHOD` (`POST` o `GET`, default `GET`)
+- `MH_CONTRIBUYENTE_QUERY_PARAM` (default `identificacion`, para `GET`)
+- `MH_CONTRIBUYENTE_CONTENT_TYPE` (default `application/json`)
+- `MH_CONTRIBUYENTE_AUTH_HEADER` (default `Authorization`)
+- `MH_CONTRIBUYENTE_AUTH_SCHEME` (default `Bearer`)
+- `MH_CONTRIBUYENTE_TOKEN` (opcional, token de API)
+- `MH_CONTRIBUYENTE_APIKEY_HEADER` (opcional)
+- `MH_CONTRIBUYENTE_APIKEY_VALUE` (opcional)
+
+### Deploy
+
+```bash
+supabase functions deploy mh-contribuyente
+```
+
+### Configurar secrets
+
+```bash
+supabase secrets set \
+MH_CONTRIBUYENTE_API_URL="https://api.hacienda.go.cr/fe/ae" \
+MH_CONTRIBUYENTE_API_METHOD="GET" \
+MH_CONTRIBUYENTE_QUERY_PARAM="identificacion" \
+MH_CONTRIBUYENTE_AUTH_HEADER="Authorization" \
+MH_CONTRIBUYENTE_AUTH_SCHEME="Bearer" \
+MH_CONTRIBUYENTE_TOKEN="tu-token-api"
+```

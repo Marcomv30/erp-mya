@@ -38,7 +38,10 @@ as $$
   join public.asiento_tipos t on t.id = c.tipo_id
   left join public.asiento_lineas l on l.asiento_id = a.id
   where a.empresa_id = p_empresa_id
-    and public.has_empresa_access(a.empresa_id)
+    and (
+      current_user in ('postgres', 'service_role')
+      or public.has_empresa_access(a.empresa_id)
+    )
     and a.estado = 'CONFIRMADO'
     and (p_fecha_desde is null or a.fecha >= p_fecha_desde)
     and (p_fecha_hasta is null or a.fecha <= p_fecha_hasta)
@@ -99,7 +102,10 @@ as $$
   join public.asiento_tipos t on t.id = c.tipo_id
   left join public.asiento_lineas l on l.asiento_id = a.id
   where a.empresa_id = p_empresa_id
-    and public.has_empresa_access(a.empresa_id)
+    and (
+      current_user in ('postgres', 'service_role')
+      or public.has_empresa_access(a.empresa_id)
+    )
     and a.estado = 'CONFIRMADO'
     and (p_fecha_desde is null or a.fecha >= p_fecha_desde)
     and (p_fecha_hasta is null or a.fecha <= p_fecha_hasta)
@@ -142,7 +148,9 @@ as $$
 declare
   v_moneda text := upper(coalesce(p_moneda, 'CRC'));
 begin
-  if auth.uid() is null then
+  if auth.uid() is null
+     and current_user not in ('postgres', 'service_role')
+  then
     raise exception 'Sesion invalida';
   end if;
 
@@ -150,11 +158,15 @@ begin
     raise exception 'Empresa requerida';
   end if;
 
-  if not public.has_empresa_access(p_empresa_id) then
+  if current_user not in ('postgres', 'service_role')
+     and not public.has_empresa_access(p_empresa_id)
+  then
     raise exception 'No tiene acceso a esta empresa';
   end if;
 
-  if not public.has_permission(p_empresa_id, 'contabilidad', 'ver') then
+  if current_user not in ('postgres', 'service_role')
+     and not public.has_permission(p_empresa_id, 'contabilidad', 'ver')
+  then
     raise exception 'No tiene permisos para ver reportes contables';
   end if;
 
@@ -192,4 +204,3 @@ grant execute on function public.get_mayor_general_movimientos(bigint, date, dat
 grant execute on function public.get_mayor_general_movimientos(bigint, date, date, text, text) to service_role;
 
 commit;
-

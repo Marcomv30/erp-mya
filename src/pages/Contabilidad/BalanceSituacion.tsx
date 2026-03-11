@@ -121,13 +121,15 @@ function escapeHtml(value: string): string {
 export default function BalanceSituacion({
   empresaId,
   onVerMovimientos,
+  filtrosExternos,
 }: {
   empresaId: number;
   onVerMovimientos?: (payload: { cuenta: string; nombre?: string; desde: string; hasta: string; moneda: 'CRC' | 'USD'; origen?: 'balancecomprobacion' | 'estadoderesultados' | 'balancesituacion' }) => void;
+  filtrosExternos?: { hasta: string; moneda: 'CRC' | 'USD' };
 }) {
   const today = new Date();
-  const [fechaHasta, setFechaHasta] = useState(today.toISOString().slice(0, 10));
-  const [moneda, setMoneda] = useState<'CRC' | 'USD'>('CRC');
+  const [fechaHasta, setFechaHasta] = useState(filtrosExternos?.hasta || today.toISOString().slice(0, 10));
+  const [moneda, setMoneda] = useState<'CRC' | 'USD'>(filtrosExternos?.moneda || 'CRC');
   const [nivelVista, setNivelVista] = useState(5);
   const [rowsBase, setRowsBase] = useState<RowBalanceSituacion[]>([]);
   const [catalogoNombre, setCatalogoNombre] = useState<Record<string, string>>({});
@@ -158,6 +160,12 @@ export default function BalanceSituacion({
     const t = setTimeout(() => cargar(), 300);
     return () => clearTimeout(t);
   }, [empresaId, fechaHasta, moneda]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!filtrosExternos) return;
+    setFechaHasta(filtrosExternos.hasta);
+    setMoneda(filtrosExternos.moneda);
+  }, [filtrosExternos?.hasta, filtrosExternos?.moneda]);
 
   const cargarCatalogo = async () => {
     const [baseResp, empResp] = await Promise.all([
@@ -548,8 +556,8 @@ export default function BalanceSituacion({
         <div className="bs-title">Balance de Situacion</div>
 
         <div className="bs-grid">
-          <input className="bs-input" type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
-          <select className="bs-input" value={moneda} onChange={(e) => setMoneda(e.target.value as 'CRC' | 'USD')}>
+          <input className="bs-input" type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} disabled={Boolean(filtrosExternos)} />
+          <select className="bs-input" value={moneda} onChange={(e) => setMoneda(e.target.value as 'CRC' | 'USD')} disabled={Boolean(filtrosExternos)}>
             <option value="CRC">CRC</option>
             <option value="USD">USD</option>
           </select>

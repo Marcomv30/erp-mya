@@ -7,10 +7,15 @@ import ListaRoles from './pages/Mantenimientos/ListaRoles';
 import ListaModulos from './pages/Mantenimientos/ListaModulos';
 import ParametrosEmpresa from './pages/Mantenimientos/ParametrosEmpresa';
 import BitacoraSeguridad from './pages/Mantenimientos/BitacoraSeguridad';
+import BitacoraModulos from './pages/Mantenimientos/BitacoraModulos';
 import AlertasDestinatarios from './pages/Mantenimientos/AlertasDestinatarios';
 import EstadoAcceso from './pages/Mantenimientos/EstadoAcceso';
 import AsientosDuplicados from './pages/Mantenimientos/AsientosDuplicados';
 import HistorialTipoCambio from './pages/Mantenimientos/HistorialTipoCambio';
+import ConsultaContribuyenteMH from './pages/Mantenimientos/ConsultaContribuyenteMH';
+import SimuladorImpuestoRenta from './pages/Mantenimientos/SimuladorImpuestoRenta';
+import EscenariosRentaPrueba from './pages/Mantenimientos/EscenariosRentaPrueba';
+import TercerosUnificados from './pages/Mantenimientos/TercerosUnificados';
 import PlanCuentas from './pages/Contabilidad/PlanCuentas';
 import ListaAsientos from './pages/Contabilidad/ListaAsientos';
 import CatalogoEmpresa from './pages/Contabilidad/CatalogoEmpresa';
@@ -24,6 +29,7 @@ import SmokeContabilidad from './pages/Contabilidad/SmokeContabilidad';
 import CierreMensual from './pages/Contabilidad/CierreMensual';
 import AuditoriaCierres from './pages/Contabilidad/AuditoriaCierres';
 import EstadosFinancieros from './pages/Contabilidad/EstadosFinancieros';
+import CarteraCxc from './pages/CXC/CarteraCxc';
 
 interface Empresa {
   id: number;
@@ -132,10 +138,15 @@ const MENU_CONFIG: MenuModuleConfig[] = [
       { id: 'roles', nombre: 'Roles', icono: '🔑', route: 'mantenimientos.roles', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'modulos', nombre: 'Módulos', icono: '📋', route: 'mantenimientos.modulos', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'seguridad', nombre: 'Bitácora Seguridad', icono: '🛡️', route: 'mantenimientos.seguridad', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'bitacoramodulos', nombre: 'Bitácora Módulos', icono: '🧭', route: 'mantenimientos.bitacoramodulos', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'alertas', nombre: 'Destinatarios Alertas', icono: '📧', route: 'mantenimientos.alertas', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'estadoacceso', nombre: 'Estado de Acceso', icono: '🔍', route: 'mantenimientos.estadoacceso', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'asientosduplicados', nombre: 'Asientos Duplicados', icono: '🧹', route: 'mantenimientos.asientosduplicados', permission: { modulo: 'mantenimientos', accion: 'ver' } },
       { id: 'historialtipocambio', nombre: 'Historial Tipo Cambio', icono: '💱', route: 'mantenimientos.historialtipocambio', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'consultacontribuyentemh', nombre: 'Consulta Contribuyente MH', icono: '🧾', route: 'mantenimientos.consultacontribuyentemh', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'simuladorrenta', nombre: 'Simulador Impuesto Renta', icono: '🧮', route: 'mantenimientos.simuladorrenta', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'escenariosrentaprueba', nombre: 'Escenarios Renta Prueba', icono: '🧪', route: 'mantenimientos.escenariosrentaprueba', permission: { modulo: 'mantenimientos', accion: 'ver' } },
+      { id: 'tercerosunificados', nombre: 'Terceros (Clientes/Prov.)', icono: '👥', route: 'mantenimientos.tercerosunificados', permission: { modulo: 'mantenimientos', accion: 'ver' } },
     ],
   },
 ];
@@ -295,7 +306,8 @@ const styles = `
   .login-panel-wrap { display:flex; align-items:center; justify-content:center; padding:28px; background:#e2e8f0; }
   .login-panel { width:100%; max-width:420px; background:#ffffff; border:1px solid #e2e8f0; border-radius:18px; padding:34px 28px;
     box-shadow:0 18px 45px rgba(15,23,42,0.16); }
-  .login-logo { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:white; margin-bottom:14px; }
+  .login-logo { width:52px; height:52px; border-radius:14px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:20px; font-weight:500; color:white; margin-bottom:14px; box-shadow:0 8px 20px rgba(15,23,42,0.2); }
+  .login-logo img { width:34px; height:34px; object-fit:contain; border-radius:8px; }
   .login-title { font-size:25px; font-weight:700; color:#0f172a; letter-spacing:-0.02em; }
   .login-sub { font-size:13px; color:#64748b; margin-top:4px; margin-bottom:24px; }
   .field-label { display:block; font-size:11px; font-weight:600; color:#64748b; letter-spacing:0.06em; text-transform:uppercase; margin-bottom:6px; }
@@ -410,7 +422,8 @@ const styles = `
   .sidebar { grid-area:sidebar; width:var(--sidebar-w); background:linear-gradient(180deg,var(--bg-dark2),var(--bg-dark)); display:flex; flex-direction:column; align-items:stretch; padding:10px 10px 14px; border-right:1px solid rgba(255,255,255,0.08); overflow:hidden; transition:width 0.24s ease, box-shadow 0.24s ease; position:relative; z-index:70; }
   .sidebar:hover { width:260px; box-shadow:8px 0 32px rgba(0,0,0,0.28); }
   .sidebar-logo { width:100%; height:44px; display:flex; align-items:center; justify-content:flex-start; padding:0 8px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:12px; margin-bottom:10px; overflow:hidden; }
-  .sidebar-logo-inner { min-width:30px; width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:white; box-shadow:0 0 16px rgba(34,197,94,0.25); }
+  .sidebar-logo-inner { min-width:30px; width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,var(--green-dim),var(--green-main)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:14px; font-weight:500; color:white; box-shadow:0 0 16px rgba(34,197,94,0.25); overflow:hidden; }
+  .sidebar-logo-inner img { width:20px; height:20px; object-fit:contain; }
   .sidebar-logo-label { margin-left:10px; font-size:12px; font-weight:600; color:#f9fafb; letter-spacing:0.02em; white-space:nowrap; opacity:0; transform:translateX(-6px); transition:opacity 0.16s ease, transform 0.16s ease; }
   .sidebar:hover .sidebar-logo-label { opacity:1; transform:translateX(0); }
   .sidebar-item { width:100%; min-height:44px; border-radius:12px; display:flex; align-items:center; gap:10px; cursor:pointer; margin-bottom:6px; padding:0 8px; transition:background 0.16s ease,border-color 0.16s ease; border:1px solid transparent; backdrop-filter:blur(2px); }
@@ -887,7 +900,7 @@ function Login({ onLogin }: {
           <span className="login-badge">ERP | SISTEMAS MYA</span>
           <h1 className="login-hero-title">{LOGIN_HERO_SLIDES[slideIndex].title}</h1>
            <p className="login-hero-sub">{LOGIN_HERO_SLIDES[slideIndex].subtitle}</p>
-          <span className="login-hero-chip">Soporte central | +506 8379 0976</span>
+          <span className="login-hero-chip">Soporte | +506 8379 0976</span>
           <div className="login-dots">
             {LOGIN_HERO_SLIDES.map((_, idx) => (
               <button
@@ -904,7 +917,10 @@ function Login({ onLogin }: {
 
       <section className="login-panel-wrap">
         <div className="login-panel">
-          <div className="login-logo">MYA</div>
+          <div className="login-logo">
+            {/* <img src={`${process.env.PUBLIC_URL}/favicon.ico`} alt="ERP-MYA" /> */}
+            MYA
+          </div>
           <div className="login-title">Iniciar Sesión</div>
           <div className="login-sub">Morales y Alfaro — Contabilidad Pública y Privada</div>
           {!faseEmpresa ? (
@@ -1188,7 +1204,9 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       />
       <aside className={`sidebar ${mobileSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-inner">M</div>
+          <div className="sidebar-logo-inner">
+            <img src={`${process.env.PUBLIC_URL}/favicon.ico`} alt="MYA" />
+          </div>
           <span className="sidebar-logo-label">Sistemas MYA</span>
         </div>
         {modulosSidebar.map((mod, i) => (
@@ -1346,6 +1364,9 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       {moduloActivo === 'mantenimientos' && submenu === 'seguridad' && canAccess('mantenimientos.seguridad') && (
         <BitacoraSeguridad canUnlock={can('mantenimientos', 'editar')} />
       )}
+      {moduloActivo === 'mantenimientos' && submenu === 'bitacoramodulos' && canAccess('mantenimientos.bitacoramodulos') && (
+        <BitacoraModulos empresaId={empresa.id} canView={can('mantenimientos', 'ver')} />
+      )}
       {moduloActivo === 'mantenimientos' && submenu === 'alertas' && canAccess('mantenimientos.alertas') && (
         <AlertasDestinatarios
           canCreate={can('mantenimientos', 'crear')}
@@ -1361,6 +1382,30 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
       )}
       {moduloActivo === 'mantenimientos' && submenu === 'historialtipocambio' && canAccess('mantenimientos.historialtipocambio') && (
         <HistorialTipoCambio empresaId={empresa.id} canEdit={can('mantenimientos', 'editar')} />
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'consultacontribuyentemh' && canAccess('mantenimientos.consultacontribuyentemh') && (
+        <ConsultaContribuyenteMH
+          canView={can('mantenimientos', 'ver')}
+          canEdit={can('mantenimientos', 'editar')}
+          empresaId={empresa.id}
+        />
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'simuladorrenta' && canAccess('mantenimientos.simuladorrenta') && (
+        <SimuladorImpuestoRenta empresaId={empresa.id} canView={can('mantenimientos', 'ver')} />
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'escenariosrentaprueba' && canAccess('mantenimientos.escenariosrentaprueba') && (
+        <EscenariosRentaPrueba
+          empresaId={empresa.id}
+          canView={can('mantenimientos', 'ver')}
+          canEdit={can('mantenimientos', 'editar')}
+        />
+      )}
+      {moduloActivo === 'mantenimientos' && submenu === 'tercerosunificados' && canAccess('mantenimientos.tercerosunificados') && (
+        <TercerosUnificados
+          empresaId={empresa.id}
+          canView={can('mantenimientos', 'ver')}
+          canEdit={can('mantenimientos', 'editar')}
+        />
       )}
       {moduloActivo === 'contabilidad' && submenu === 'plancuentas' && canAccess('contabilidad.plancuentas') && <PlanCuentas />}
       {moduloActivo === 'contabilidad' && submenu === 'mayorgeneral' && canAccess('contabilidad.mayorgeneral') && (
@@ -1446,6 +1491,29 @@ function Dashboard({ usuario, empresa, onSalir, permisos, empresasAutorizadas, r
               ))}
           </div>
         </div>
+      )}
+      {moduloActivo === 'clientes' && submenu === '' && canAccess('clientes') && (
+        <TercerosUnificados
+          empresaId={empresa.id}
+          canView={can('clientes', 'ver')}
+          canEdit={can('clientes', 'editar')}
+          modo="clientes"
+        />
+      )}
+      {moduloActivo === 'proveedores' && submenu === '' && canAccess('proveedores') && (
+        <TercerosUnificados
+          empresaId={empresa.id}
+          canView={can('proveedores', 'ver')}
+          canEdit={can('proveedores', 'editar')}
+          modo="proveedores"
+        />
+      )}
+      {moduloActivo === 'cxc' && submenu === '' && canAccess('cxc') && (
+        <CarteraCxc
+          empresaId={empresa.id}
+          canView={can('cxc', 'ver')}
+          canEdit={can('cxc', 'editar')}
+        />
       )}
 
     {moduloActivo && submenu && !submenusPermitidos.some(item => item.id === submenu) && (

@@ -137,7 +137,16 @@ begin
 
   return query
   with er as (
-    select coalesce(sum(x.neto), 0)::numeric as utilidad_neta
+    select coalesce(
+      sum(
+        case
+          when x.tipo = 'INGRESO' then x.neto
+          when x.tipo in ('COSTO', 'GASTO') then -x.neto
+          else 0
+        end
+      ),
+      0
+    )::numeric as utilidad_neta
     from public.get_estado_resultados(p_empresa_id, v_fecha_desde, v_fecha_hasta, v_moneda) x
   ),
   efectivo_ini as (

@@ -175,7 +175,16 @@ begin
     from mov_cap m
   ),
   er as (
-    select coalesce(sum(x.neto), 0)::numeric as utilidad_neta
+    select coalesce(
+      sum(
+        case
+          when x.tipo = 'INGRESO' then x.neto
+          when x.tipo in ('COSTO', 'GASTO') then -x.neto
+          else 0
+        end
+      ),
+      0
+    )::numeric as utilidad_neta
     from public.get_estado_resultados(p_empresa_id, v_fecha_desde, v_fecha_hasta, v_moneda) x
   ),
   bs_tot as (
@@ -208,15 +217,12 @@ begin
   calc as (
     select
       b.capital_inicial,
+      -- FE y EC deben presentar la misma utilidad del periodo: utilidad neta de ER.
+      b.utilidad_neta::numeric as utilidad_presentada,
       (
         case
-          when b.es_preliminar then b.utilidad_bs
-          else b.utilidad_neta
-        end
-      )::numeric as utilidad_presentada,
-      (
-        case
-          when b.es_preliminar then (b.capital_final + b.utilidad_bs)
+          -- En preliminar, se adiciona la utilidad neta para presentar capital estimado al cierre.
+          when b.es_preliminar then (b.capital_final + b.utilidad_neta)
           else b.capital_final
         end
       )::numeric as capital_final_presentado,
@@ -234,7 +240,7 @@ begin
   )
   select 'Capital inicial'::text, c.capital_inicial, 10::integer from final_calc c
   union all
-  select 'Utilidad del periodo'::text, c.utilidad_presentada, 20::integer from final_calc c
+  select 'Utilidad neta del periodo'::text, c.utilidad_presentada, 20::integer from final_calc c
   union all
   select 'Movimientos directos de capital'::text, c.movimientos_directos_real, 30::integer from final_calc c
   union all

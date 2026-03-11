@@ -93,7 +93,11 @@ as $$
       'impuesto_ventas', 13,
       'otros_impuestos', 0,
       'impuesto_renta', 30,
-      'impuesto_consumo', 0
+      'impuesto_consumo', 0,
+      'tipo_contribuyente', 'persona_juridica',
+      'juridica_tope_logica', 'TASA_PLANA',
+      'regimen_renta', 'PERSONA_JURIDICA_PYME',
+      'ingreso_bruto_anual', null
     ),
     'cierre_contable', jsonb_build_object(
       'activo', false,
@@ -124,6 +128,7 @@ as $$
       'control_limite_credito', false,
       'aplica_compras_contabilidad', false,
       'control_cheques_postfechados', false,
+      'eeff_umbral_alerta_conciliacion', 10000,
       'tipo_cambio', jsonb_build_object(
         'fecha', null,
         'compra', 0,
@@ -255,6 +260,11 @@ declare
   v_facturacion jsonb;
   v_redondeo jsonb;
   v_varios jsonb;
+  v_fiscal_ini date;
+  v_fiscal_fin date;
+  v_cierre_activo boolean := false;
+  v_cierre_ini date;
+  v_cierre_fin date;
 begin
   if v_uid is null then
     raise exception 'Sesion invalida';
@@ -284,6 +294,23 @@ begin
   v_facturacion := coalesce(p_payload->'facturacion', v_existing.facturacion, v_defaults->'facturacion');
   v_redondeo := coalesce(p_payload->'redondeo', v_existing.redondeo, v_defaults->'redondeo');
   v_varios := coalesce(p_payload->'varios', v_existing.varios, v_defaults->'varios');
+
+  -- Validaciones de coherencia para evitar estados invalidos por llamadas RPC directas.
+  v_fiscal_ini := nullif(v_fiscal->>'fecha_inicio', '')::date;
+  v_fiscal_fin := nullif(v_fiscal->>'fecha_fin', '')::date;
+  if v_fiscal_ini is not null and v_fiscal_fin is not null and v_fiscal_ini > v_fiscal_fin then
+    raise exception 'Rango fiscal invalido: fecha_inicio (%) no puede ser mayor que fecha_fin (%)', v_fiscal_ini, v_fiscal_fin;
+  end if;
+
+  v_cierre_activo := coalesce((v_cierre_contable->>'activo')::boolean, false);
+  v_cierre_ini := nullif(v_cierre_contable->>'fecha_inicio', '')::date;
+  v_cierre_fin := nullif(v_cierre_contable->>'fecha_fin', '')::date;
+  if v_cierre_activo and (v_cierre_ini is null or v_cierre_fin is null) then
+    raise exception 'Cierre contable activo requiere fecha_inicio y fecha_fin';
+  end if;
+  if v_cierre_ini is not null and v_cierre_fin is not null and v_cierre_ini > v_cierre_fin then
+    raise exception 'Rango de cierre invalido: fecha_inicio (%) no puede ser mayor que fecha_fin (%)', v_cierre_ini, v_cierre_fin;
+  end if;
 
   insert into public.empresa_parametros (
     empresa_id,

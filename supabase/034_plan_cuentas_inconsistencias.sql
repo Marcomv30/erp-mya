@@ -24,7 +24,9 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is null then
+  if auth.uid() is null
+     and current_user not in ('postgres', 'service_role')
+  then
     raise exception 'Sesion invalida';
   end if;
 
@@ -32,15 +34,19 @@ begin
     raise exception 'Empresa requerida';
   end if;
 
-  if not public.has_empresa_access(p_empresa_id) then
+  if current_user not in ('postgres', 'service_role')
+     and not public.has_empresa_access(p_empresa_id)
+  then
     raise exception 'No tiene acceso a esta empresa';
   end if;
 
-  if not (
-    public.has_permission(p_empresa_id, 'contabilidad', 'ver')
-    or public.has_permission(p_empresa_id, 'contabilidad', 'editar')
-    or public.has_permission(p_empresa_id, 'contabilidad', 'aprobar')
-  ) then
+  if current_user not in ('postgres', 'service_role')
+     and not (
+       public.has_permission(p_empresa_id, 'contabilidad', 'ver')
+       or public.has_permission(p_empresa_id, 'contabilidad', 'editar')
+       or public.has_permission(p_empresa_id, 'contabilidad', 'aprobar')
+     )
+  then
     raise exception 'No tiene permisos para diagnostico contable';
   end if;
 
